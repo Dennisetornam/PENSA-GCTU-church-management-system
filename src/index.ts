@@ -9,6 +9,7 @@ import { RateLimiter } from "./rate-limit/rate-limiter.do";
 import { rateLimit, auditViolation } from "./rate-limit/middleware";
 import { LIMIT_RULES } from "./rate-limit/config";
 import { registrationRoutes } from "./registration/routes";
+import { adminRoutes } from "./admin/routes";
 
 // The Durable Object class must be exported from the Worker entry module.
 export { RateLimiter };
@@ -33,6 +34,9 @@ const requireAdmin: MiddlewareHandler<{ Bindings: Env; Variables: Variables }> =
 // ── 1. Public Member Registration — multi-step + draft + image + submit ──────
 //     (rate limiting is applied inside the registration sub-app per endpoint)
 app.route("/register", registrationRoutes);
+
+// ── Admin API (interim token-guarded) — registrations approval + members ─────
+app.route("/api", adminRoutes);
 
 // ── 2. Admin Login — 5/15min/IP ──────────────────────────────────────────────
 app.post("/auth/login", rateLimit(LIMIT_RULES.login, deps), (c) =>

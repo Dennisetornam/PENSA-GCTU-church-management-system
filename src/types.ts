@@ -13,6 +13,8 @@ export interface Env {
   // Secrets (wrangler secret put …)
   JWT_SECRET: string;
   TURNSTILE_SECRET: string;
+  // INTERIM: shared-secret guard for admin endpoints until Phase-1 JWT auth lands.
+  ADMIN_API_TOKEN?: string;
 }
 
 // Per-request values set by upstream middleware (e.g. auth).
