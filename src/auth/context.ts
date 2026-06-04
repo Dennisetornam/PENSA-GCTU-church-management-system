@@ -44,11 +44,23 @@ export function requirePermission(auth: AuthContext | null, perm: Permission): S
   return scope;
 }
 
-/** Hono middleware: populate c.var.auth (401 if no/invalid token). */
+/** Hono middleware: require a valid access token (401 otherwise). */
 export function requireAuth(): MiddlewareHandler<{ Bindings: Env; Variables: Variables }> {
   return async (c, next) => {
     const auth = await getAuth(c.req.raw, c.env.JWT_SECRET);
     if (!auth) return c.json({ error: "unauthorized" }, 401);
+    c.set("userId", auth.userId);
+    c.set("role", auth.role);
+    await next();
+  };
+}
+
+/** Hono middleware: require a permission (401 if unauthenticated, 403 if lacking it). */
+export function authorize(perm: Permission): MiddlewareHandler<{ Bindings: Env; Variables: Variables }> {
+  return async (c, next) => {
+    const auth = await getAuth(c.req.raw, c.env.JWT_SECRET);
+    if (!auth) return c.json({ error: "unauthorized" }, 401);
+    if (!can(auth.role, perm)) return c.json({ error: "forbidden" }, 403);
     c.set("userId", auth.userId);
     c.set("role", auth.role);
     await next();
