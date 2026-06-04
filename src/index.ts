@@ -10,6 +10,7 @@ import { rateLimit, auditViolation } from "./rate-limit/middleware";
 import { LIMIT_RULES } from "./rate-limit/config";
 import { registrationRoutes } from "./registration/routes";
 import { adminRoutes } from "./admin/routes";
+import { authRoutes } from "./auth/routes";
 
 // The Durable Object class must be exported from the Worker entry module.
 export { RateLimiter };
@@ -38,10 +39,8 @@ app.route("/register", registrationRoutes);
 // ── Admin API (interim token-guarded) — registrations approval + members ─────
 app.route("/api", adminRoutes);
 
-// ── 2. Admin Login — 5/15min/IP ──────────────────────────────────────────────
-app.post("/auth/login", rateLimit(LIMIT_RULES.login, deps), (c) =>
-  c.json({ ok: true }),
-);
+// ── 2. Admin/Leader Authentication — login (5/15min/IP), refresh, logout, me ──
+app.route("/auth", authRoutes);
 
 // ── 3. Member Search / Check-In — 300/hour/admin user (anti-scraping) ────────
 app.use("/check-in", requireAdmin, rateLimit(LIMIT_RULES.checkin, deps));

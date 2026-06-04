@@ -36,6 +36,10 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     role_id       TEXT NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
     status        TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended')),
+    member_id     TEXT REFERENCES members(id) ON DELETE SET NULL,   -- links a leader-user to their member record (scope)
+    failed_login_count  INTEGER NOT NULL DEFAULT 0,
+    locked_until        TEXT,
+    password_changed_at TEXT,
     last_login_at TEXT,
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
@@ -43,6 +47,25 @@ CREATE TABLE users (
 );
 CREATE UNIQUE INDEX ux_users_email_live ON users(email) WHERE deleted_at IS NULL;
 CREATE INDEX ix_users_role ON users(role_id);
+CREATE INDEX ix_users_member ON users(member_id);
+
+-- Rotating refresh tokens (hashed, family-tracked, reuse-detectable)
+CREATE TABLE refresh_tokens (
+    id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    family_id   TEXT NOT NULL,
+    token_hash  TEXT NOT NULL,
+    parent_id   TEXT,
+    issued_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at  TEXT NOT NULL,
+    revoked_at  TEXT,
+    replaced_by TEXT,
+    ip          TEXT,
+    user_agent  TEXT
+);
+CREATE UNIQUE INDEX ux_refresh_token_hash ON refresh_tokens(token_hash);
+CREATE INDEX ix_refresh_user ON refresh_tokens(user_id);
+CREATE INDEX ix_refresh_family ON refresh_tokens(family_id);
 
 -- Sessions primarily live in Cloudflare KV; this table is an optional durable
 -- mirror for audit/revocation and for environments without KV.
