@@ -196,6 +196,7 @@ CREATE TABLE members (
     updated_at                TEXT NOT NULL DEFAULT (datetime('now')),
     deleted_at                TEXT,
     row_version               INTEGER NOT NULL DEFAULT 1,   -- mobile offline-sync conflict detection
+    qr_version                INTEGER NOT NULL DEFAULT 1,   -- bump to revoke a member's QR token
     -- Stored, indexed concatenation for fast name search (read-only/computed)
     full_name                 TEXT GENERATED ALWAYS AS (trim(first_name || ' ' || coalesce(other_names || ' ', '') || last_name)) STORED
 );
@@ -326,12 +327,38 @@ CREATE TABLE attendance_records (
     member_id     TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
     status        TEXT NOT NULL CHECK (status IN ('present','late','excused','absent')),
     checked_in_at TEXT,
+    method        TEXT CHECK (method IN ('manual','qr','kiosk','import')),
+    recorded_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
     row_version   INTEGER NOT NULL DEFAULT 1
 );
 CREATE UNIQUE INDEX ux_attendance_session_member ON attendance_records(session_id, member_id);
 CREATE INDEX ix_attendance_member ON attendance_records(member_id);
+CREATE INDEX ix_attendance_member_session ON attendance_records(member_id, session_id);
+
+-- Sparse storage: only present/late/excused are persisted; 'absent' = no row.
+-- Per-session denormalized counts (filled on close) so dashboards never scan records.
+CREATE TABLE attendance_session_summary (
+    session_id     TEXT PRIMARY KEY REFERENCES attendance_sessions(id) ON DELETE CASCADE,
+    eligible_count INTEGER NOT NULL DEFAULT 0,
+    present        INTEGER NOT NULL DEFAULT 0,
+    late           INTEGER NOT NULL DEFAULT 0,
+    excused        INTEGER NOT NULL DEFAULT 0,
+    attended       INTEGER NOT NULL DEFAULT 0,
+    finalized_at   TEXT
+);
+
+-- Per-member monthly rollup → O(1) history & absentee analytics at any scale.
+CREATE TABLE member_attendance_monthly (
+    member_id          TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    year_month         TEXT NOT NULL,                -- 'YYYY-MM'
+    present            INTEGER NOT NULL DEFAULT 0,
+    late               INTEGER NOT NULL DEFAULT 0,
+    excused            INTEGER NOT NULL DEFAULT 0,
+    last_attended_date TEXT,
+    PRIMARY KEY (member_id, year_month)
+);
 
 -- =============================================================================
 -- SECTION 7 — GENERIC SEAMS (reused by current + future modules)
