@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ivory: #f8f4ec;
+  --ink: #211b33;
+  --gold: #c39a4a;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-ivory text-ink font-sans antialiased;
+    font-feature-settings: "ss01";
+  }
+  h1, h2, h3, h4 {
+    @apply font-display;
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+  }
+  ::selection {
+    background: rgba(195, 154, 74, 0.28);
+  }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-thumb { background: rgba(33, 27, 51, 0.18); border-radius: 99px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(33, 27, 51, 0.32); background-clip: content-box; }
+}
+
+@layer components {
+  /* fine paper grain — gives the ivory a warm, tactile feel */
+  .grain::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    mix-blend-mode: multiply;
+  }
+
+  /* candlelight — warm radial glow */
+  .candlelight {
+    background:
+      radial-gradient(60% 50% at 50% 0%, rgba(227, 203, 137, 0.22), transparent 70%),
+      radial-gradient(80% 60% at 80% 10%, rgba(195, 154, 74, 0.1), transparent 60%);
+  }
+
+  /* pointed church-arch shape (clip) */
+  .arch {
+    border-top-left-radius: 9999px;
+    border-top-right-radius: 9999px;
+  }
+
+  .gold-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(195, 154, 74, 0.6), transparent);
+  }
+
+  .card {
+    @apply rounded-xl2 bg-ivory-soft border border-ink/10 shadow-soft;
+  }
+
+  .eyebrow {
+    @apply font-sans uppercase text-[0.7rem] font-semibold tracking-[0.22em] text-gold;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-vespers text-ivory-soft shadow-lift hover:bg-vespers-deep hover:-translate-y-0.5;
+  }
+  .btn-gold {
+    @apply btn bg-gradient-to-b from-gold-bright to-gold text-vespers-deep shadow-gold hover:-translate-y-0.5;
+  }
+  .btn-ghost {
+    @apply btn border border-ink/15 text-ink hover:border-ink/30 hover:bg-ink/[0.03];
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-ink/15 bg-ivory-soft px-4 py-3 text-ink placeholder:text-ink/35
+           outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/15;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink-soft;
+  }
+}
+
+/* staggered reveal helper */
+.stagger > * { opacity: 0; animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger > *:nth-child(2) { animation-delay: 0.12s; }
+.stagger > *:nth-child(3) { animation-delay: 0.2s; }
+.stagger > *:nth-child(4) { animation-delay: 0.28s; }
+.stagger > *:nth-child(5) { animation-delay: 0.36s; }
+.stagger > *:nth-child(6) { animation-delay: 0.44s; }
