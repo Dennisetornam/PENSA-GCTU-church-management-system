@@ -25,7 +25,7 @@ This is the public intake step. It creates a **registration**, never a member or
 | WhatsApp Number | tel | `members.whatsapp_number` | "same as phone" shortcut |
 | Membership Status | radio | `members.membership_status` | self-declared; admin confirms on approval |
 | Gathering Type | select (lookup) | `members.primary_gathering_type_id` *(new col)* | "which gathering do you attend?" |
-| Profile Picture | image | `members.profile_picture_key` (R2) | optional; uploaded to draft first |
+| Profile Picture | image | `members.profile_picture_key` (R2) | **required**; uploaded to draft first |
 
 > **Decision — Membership Status:** collected as *self-declared* (Visitor/Associate/etc.). On approval the admin confirms or overrides; if untouched, the system default remains `visitor`. The registrant's choice is stored for the admin to see, not auto-trusted.
 
@@ -119,8 +119,9 @@ POST /register  {fields…, draftToken, turnstileToken}
   → upsert registration: status pending, copy structured cols, attach image key,
        set possible_duplicate/duplicate_* , submitted_at
   → clear draft cookie
+  → assign reference REG-YYYY-NNNN (per-year counter, analogous to member_code)
   → audit: registration.submitted
-  → 200 { reference: REG-<short>, status: "pending_approval" }
+  → 200 { reference: "REG-2026-0001", status: "pending_approval" }
 ```
 
 ---
@@ -157,7 +158,7 @@ Mobile-first, one logical group per step, sticky footer nav, top progress bar:
 - `<input type="file" accept="image/*" capture="user">` → opens **camera on mobile**.
 - **Client-side compress/resize** (canvas → ~1024px, WebP/JPEG, target <1 MB) before upload — saves bandwidth and R2 storage.
 - Optional square **crop**; live **preview**; upload to `/register/image` with progress; replace/remove.
-- Image is **optional** (registration succeeds without it).
+- Image is **required** — Step 1 "Next" is blocked and Submit is disabled until a valid image is uploaded.
 
 ### 3.5 Validation UX
 - Inline, on-blur + on-submit; phone formatted as typed; friendly messages; `inputmode="tel"`/`numeric` for mobile keyboards; date picker with sensible bounds.
@@ -227,11 +228,11 @@ Admin later: approval queue (with possible-duplicate badges) → approve → mem
 3. Images upload **through the Worker** (validated), bucket stays private.
 4. Draft = **localStorage autosave + server draft** (token cookie) for resume.
 
-**Open questions for you:**
-- **A.** Profile picture: keep **optional** (recommended), or required?
-- **B.** Multi-step grouping: 6 steps as above, or condense to **4**?
-- **C.** Should a registrant pick **one** department or **multiple**? (schema supports many)
-- **D.** Reference number shown to visitors — keep (`REG-2026-XXXX`) or omit?
+**Resolved (confirmed 2026-06-04):**
+- **A.** Profile picture is **required** — Step 1 blocks until a valid image is uploaded.
+- **B.** **6 steps** as listed above.
+- **C.** A registrant may select **multiple departments** (M:N via `member_departments`).
+- **D.** The **`REG-2026-XXXX`** reference is **shown** on the confirmation screen.
 
 ---
 
