@@ -23,12 +23,9 @@ migrations_dir = "db/migrations"
 binding = "KV"
 id = "8644070fa82140669a3139bbe09f1068"
 
-# R2 is not yet enabled on this account. Enable R2 in the Cloudflare dashboard,
-# then run: wrangler r2 bucket create pensa-gctu-media-dev (+ staging/production)
-# and uncomment these blocks. MEDIA is only needed by the members media features.
-# [[r2_buckets]]
-# binding = "MEDIA"
-# bucket_name = "pensa-gctu-media-dev"
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pensa-gctu-media-dev"
 
 # Secrets (do NOT put values here): JWT_SECRET, TURNSTILE_SECRET
 # Set with: wrangler secret put JWT_SECRET   (and per --env)
@@ -46,9 +43,9 @@ migrations_dir = "db/migrations"
 [[env.staging.kv_namespaces]]
 binding = "KV"
 id = "43602ce0be734f08a3500b5476d6ba05"
-# [[env.staging.r2_buckets]]
-# binding = "MEDIA"
-# bucket_name = "pensa-gctu-media-staging"
+[[env.staging.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pensa-gctu-media-staging"
 
 # ── Production ───────────────────────────────────────────────────────────────
 [env.production]
@@ -63,6 +60,6 @@ migrations_dir = "db/migrations"
 [[env.production.kv_namespaces]]
 binding = "KV"
 id = "e90f8b91e7bd428daf35aff89839ee7a"
-# [[env.production.r2_buckets]]
-# binding = "MEDIA"
-# bucket_name = "pensa-gctu-media-production"
+[[env.production.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pensa-gctu-media-production"
