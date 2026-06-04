@@ -1,0 +1,65 @@
+name = "pensa-gctu-cms"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+compatibility_flags = ["nodejs_compat"]
+
+# ── Durable Objects ──────────────────────────────────────────────────────────
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RateLimiter"]
+
+# ── Default (local/dev) bindings ─────────────────────────────────────────────
+[[d1_databases]]
+binding = "DB"
+database_name = "pensa-gctu-dev"
+database_id = "PLACEHOLDER_DEV"          # set via `wrangler d1 create`
+migrations_dir = "db/migrations"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "PLACEHOLDER_DEV_KV"                 # set via `wrangler kv namespace create KV`
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pensa-gctu-media-dev"
+
+# Secrets (do NOT put values here): JWT_SECRET, TURNSTILE_SECRET
+# Set with: wrangler secret put JWT_SECRET   (and per --env)
+
+# ── Staging ──────────────────────────────────────────────────────────────────
+[env.staging]
+[[env.staging.durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "pensa-gctu-staging"
+database_id = "PLACEHOLDER_STAGING"
+migrations_dir = "db/migrations"
+[[env.staging.kv_namespaces]]
+binding = "KV"
+id = "PLACEHOLDER_STAGING_KV"
+[[env.staging.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pensa-gctu-media-staging"
+
+# ── Production ───────────────────────────────────────────────────────────────
+[env.production]
+[[env.production.durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "pensa-gctu-production"
+database_id = "PLACEHOLDER_PROD"
+migrations_dir = "db/migrations"
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "PLACEHOLDER_PROD_KV"
+[[env.production.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "pensa-gctu-media-production"
