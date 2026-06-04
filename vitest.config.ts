@@ -1,17 +1,17 @@
-import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+import { defineConfig } from "vitest/config";
 
-// Runs tests inside the real Workers runtime so the RATE_LIMITER Durable Object,
-// D1 (DB), KV, and R2 bindings from wrangler.toml are available as `env`.
-export default defineWorkersConfig({
+// Node-environment Vitest. Backend logic + Hono routes are tested against a
+// D1-compatible shim over node:sqlite (D1 is SQLite) with stub KV/R2/RateLimiter
+// — fast and reliable, and avoids the @cloudflare/vitest-pool-workers loader bug
+// on Windows paths containing spaces. Final verification runs on real D1 via
+// staging deploys. The workers-pool integration spec is excluded here and can
+// run in CI on a space-free path.
+export default defineConfig({
+  ssr: { external: ["node:sqlite"] },
   test: {
-    poolOptions: {
-      workers: {
-        wrangler: { configPath: "./wrangler.toml" },
-        miniflare: {
-          // Apply the SQL schema to the test D1 before the suite runs.
-          // (Wire d1 migrations or a setup file here when executing Phase 0.)
-        },
-      },
-    },
+    environment: "node",
+    include: ["tests/**/*.test.ts"],
+    exclude: ["tests/rate-limit/rate-limiter.test.ts", "node_modules/**"],
+    server: { deps: { external: ["node:sqlite", /node:sqlite/] } },
   },
 });
