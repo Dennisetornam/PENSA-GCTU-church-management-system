@@ -1,0 +1,29 @@
+// Analytics API (mounted at /api/analytics), JWT + RBAC guarded.
+import { Hono } from "hono";
+import type { Env, Variables } from "../types";
+import { authorize } from "../auth/context";
+import { getSummary, getDistribution, getBaptism, getAttendanceTrend, getGrowth } from "./repository";
+
+const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+app.get("/summary", authorize("analytics:view"), async (c) => c.json(await getSummary(c.env.DB)));
+
+app.get("/distribution", authorize("analytics:view"), async (c) => {
+  const dim = c.req.query("dimension");
+  if (dim !== "cell" && dim !== "department" && dim !== "programme") {
+    return c.json({ error: "dimension must be cell|department|programme" }, 400);
+  }
+  return c.json({ dimension: dim, results: await getDistribution(c.env.DB, dim) });
+});
+
+app.get("/baptism", authorize("analytics:view"), async (c) => c.json(await getBaptism(c.env.DB)));
+
+app.get("/attendance-trend", authorize("analytics:view"), async (c) =>
+  c.json({ results: await getAttendanceTrend(c.env.DB, { gatheringTypeId: c.req.query("gatheringTypeId"), limit: Number(c.req.query("limit") ?? "90") }) }),
+);
+
+app.get("/growth", authorize("analytics:view"), async (c) =>
+  c.json({ results: await getGrowth(c.env.DB, { limit: Number(c.req.query("limit") ?? "180") }) }),
+);
+
+export const analyticsRoutes = app;

@@ -210,6 +210,9 @@ CREATE INDEX ix_members_cell                ON members(cell_id);           -- at
 CREATE INDEX ix_members_programme           ON members(programme_id);
 CREATE INDEX ix_members_last_name           ON members(last_name);
 CREATE INDEX ix_members_updated             ON members(updated_at);        -- delta sync cursor
+CREATE INDEX ix_members_hgb        ON members(holy_ghost_baptism) WHERE deleted_at IS NULL;  -- baptism analytics
+CREATE INDEX ix_members_wb         ON members(water_baptism)      WHERE deleted_at IS NULL;
+CREATE INDEX ix_members_residence  ON members(residence_status)   WHERE deleted_at IS NULL;
 
 -- Per-year atomic counter for human-readable member codes (PENSA-YYYY-NNNN).
 -- Bumped on approval via: INSERT INTO member_code_counters(year,last_seq) VALUES(:y,1)
@@ -387,6 +390,23 @@ CREATE TABLE settings (
     value      TEXT NOT NULL,                           -- JSON
     updated_by TEXT REFERENCES users(id) ON DELETE SET NULL,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Nightly membership snapshot → Growth Trends + historical status mix (Cron).
+CREATE TABLE membership_snapshots (
+    snapshot_date       TEXT PRIMARY KEY,                -- 'YYYY-MM-DD'
+    total               INTEGER NOT NULL DEFAULT 0,
+    actual_members      INTEGER NOT NULL DEFAULT 0,
+    visitors            INTEGER NOT NULL DEFAULT 0,
+    associates          INTEGER NOT NULL DEFAULT 0,
+    alumni              INTEGER NOT NULL DEFAULT 0,
+    active_90d          INTEGER NOT NULL DEFAULT 0,
+    hostel_resident     INTEGER NOT NULL DEFAULT 0,
+    non_resident        INTEGER NOT NULL DEFAULT 0,
+    holy_ghost_baptized INTEGER NOT NULL DEFAULT 0,
+    water_baptized      INTEGER NOT NULL DEFAULT 0,
+    new_approved        INTEGER NOT NULL DEFAULT 0,
+    created_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- =============================================================================

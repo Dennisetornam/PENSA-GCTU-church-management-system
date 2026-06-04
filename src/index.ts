@@ -6,6 +6,7 @@ import { registrationRoutes } from "./registration/routes";
 import { adminRoutes } from "./admin/routes";
 import { authRoutes } from "./auth/routes";
 import { attendanceRoutes } from "./attendance/routes";
+import { analyticsRoutes } from "./analytics/routes";
 
 // The Durable Object class must be exported from the Worker entry module.
 export { RateLimiter };
@@ -25,5 +26,8 @@ app.route("/api", adminRoutes);
 
 // Attendance — sessions, manual + QR marking, history (JWT + RBAC, rate-limited)
 app.route("/api/attendance", attendanceRoutes);
+
+// Analytics — KPIs, distributions, baptism, attendance & growth trends (JWT + RBAC)
+app.route("/api/analytics", analyticsRoutes);
 
 export default app;
