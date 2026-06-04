@@ -5,13 +5,12 @@
 -- official GCTU programme list is provided.
 -- =============================================================================
 
--- Roles ----------------------------------------------------------------------
+-- Roles (4 authenticating roles; members are records only, they do NOT log in) -
 INSERT INTO roles (id, name, description, is_system) VALUES
-  ('role_super_admin', 'super_admin',       'Full system owner: users, roles, audit, settings', 1),
-  ('role_admin',       'admin',             'Pastoral/exec leadership: full domain + approvals + lookups', 1),
-  ('role_staff',       'staff',             'Ushers/secretaries: members, attendance, registrations', 1),
-  ('role_dept_leader', 'department_leader', 'Manages own department roster & attendance', 1),
-  ('role_cell_leader', 'cell_leader',       'Manages own cell roster & attendance', 1)
+  ('role_super_admin',  'super_admin',       'Full system owner: users, roles, audit, settings', 1),
+  ('role_church_admin', 'church_admin',      'Church Administrator: full domain + approvals + lookups', 1),
+  ('role_dept_leader',  'department_leader', 'Manages own department roster & attendance', 1),
+  ('role_cell_leader',  'cell_leader',       'Manages own cell roster & attendance', 1)
 ON CONFLICT(id) DO NOTHING;
 
 -- Cells ----------------------------------------------------------------------

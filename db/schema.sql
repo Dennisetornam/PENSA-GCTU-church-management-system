@@ -57,15 +57,9 @@ CREATE TABLE sessions (
 CREATE INDEX ix_sessions_user ON sessions(user_id);
 CREATE INDEX ix_sessions_expiry ON sessions(expires_at);
 
-CREATE TABLE password_reset_tokens (
-    id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash  TEXT NOT NULL,
-    expires_at  TEXT NOT NULL,
-    used_at     TEXT,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX ix_prt_user ON password_reset_tokens(user_id);
+-- NOTE: password_reset_tokens and account invitations were intentionally removed.
+-- Members are records only (no member login). Admin/leader accounts are
+-- provisioned directly by a Super Admin; there is no self-service password reset.
 
 -- Generic, append-only audit trail for every sensitive action.
 CREATE TABLE audit_log (
@@ -172,18 +166,32 @@ CREATE TABLE members (
     join_date                 TEXT,
     notes                     TEXT,
     -- Audit / sync
+    member_code               TEXT,                         -- human-readable ID, auto-assigned on approval: PENSA-YYYY-NNNN
     created_at                TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at                TEXT NOT NULL DEFAULT (datetime('now')),
     deleted_at                TEXT,
-    row_version               INTEGER NOT NULL DEFAULT 1   -- mobile offline-sync conflict detection
+    row_version               INTEGER NOT NULL DEFAULT 1,   -- mobile offline-sync conflict detection
+    -- Stored, indexed concatenation for fast name search (read-only/computed)
+    full_name                 TEXT GENERATED ALWAYS AS (trim(first_name || ' ' || coalesce(other_names || ' ', '') || last_name)) STORED
 );
-CREATE UNIQUE INDEX ux_members_phone_live ON members(phone_number) WHERE deleted_at IS NULL;
-CREATE INDEX ix_members_membership_status ON members(membership_status) WHERE deleted_at IS NULL;
+-- Fast-lookup indexes (registration/check-in hot paths)
+CREATE UNIQUE INDEX ux_members_phone_live   ON members(phone_number) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX ux_members_member_code  ON members(member_code) WHERE member_code IS NOT NULL AND deleted_at IS NULL;
+CREATE INDEX ix_members_full_name           ON members(full_name);
+CREATE INDEX ix_members_membership_status   ON members(membership_status) WHERE deleted_at IS NULL;
 CREATE INDEX ix_members_registration_status ON members(registration_status) WHERE deleted_at IS NULL;
-CREATE INDEX ix_members_cell ON members(cell_id);
-CREATE INDEX ix_members_programme ON members(programme_id);
-CREATE INDEX ix_members_last_name ON members(last_name);
-CREATE INDEX ix_members_updated ON members(updated_at);   -- delta sync cursor
+CREATE INDEX ix_members_cell                ON members(cell_id);           -- attendance filter by cell
+CREATE INDEX ix_members_programme           ON members(programme_id);
+CREATE INDEX ix_members_last_name           ON members(last_name);
+CREATE INDEX ix_members_updated             ON members(updated_at);        -- delta sync cursor
+
+-- Per-year atomic counter for human-readable member codes (PENSA-YYYY-NNNN).
+-- Bumped on approval via: INSERT INTO member_code_counters(year,last_seq) VALUES(:y,1)
+--   ON CONFLICT(year) DO UPDATE SET last_seq = last_seq + 1 RETURNING last_seq;
+CREATE TABLE member_code_counters (
+    year     TEXT PRIMARY KEY,
+    last_seq INTEGER NOT NULL DEFAULT 0
+);
 
 -- Member ↔ Department (many-to-many)
 CREATE TABLE member_departments (
@@ -270,7 +278,7 @@ CREATE TABLE attendance_records (
     id            TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
     session_id    TEXT NOT NULL REFERENCES attendance_sessions(id) ON DELETE CASCADE,
     member_id     TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-    status        TEXT NOT NULL CHECK (status IN ('present','absent','excused')),
+    status        TEXT NOT NULL CHECK (status IN ('present','late','excused','absent')),
     checked_in_at TEXT,
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at    TEXT NOT NULL DEFAULT (datetime('now')),

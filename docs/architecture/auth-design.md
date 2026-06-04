@@ -1,6 +1,13 @@
 # PENSA GCTU CMS — Authentication & Authorization Design
 
-**Status:** Proposed (awaiting approval) · **Date:** 2026-06-04
+> ⚠️ **PARTIALLY SUPERSEDED by `scope-update-2026-06-04.md`.** Members are now
+> records-only (no login). The **Member role, invitation flow, account
+> activation, and password reset are removed.** Authenticating roles are now the
+> **4** admin/leader roles. The token, hashing, RBAC, rate-limiting, CSRF,
+> Turnstile, and audit designs below remain valid for those 4 roles. The backend
+> framework is **Hono on Workers** (not React Router as the API).
+
+**Status:** Partially superseded (see banner) · **Date:** 2026-06-04
 **Runtime:** Cloudflare Workers · **DB:** D1 · **Edge state:** KV + Durable Objects
 **Supersedes:** the provisional role set in `system-design.md` (`admin`/`staff`) — see §1.
 

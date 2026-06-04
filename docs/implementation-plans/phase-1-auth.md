@@ -1,5 +1,13 @@
 # Phase 1 — Authentication & Authorization Implementation Plan
 
+> ⚠️ **AMENDED by `scope-update-2026-06-04.md`.** Members do not authenticate.
+> **Remove Task 15 (account activation + password reset)** and all `member`-role
+> and invitation references. Canonical roles are the **4** admin/leader roles
+> (`super_admin`, `church_admin`, `department_leader`, `cell_leader`). Backend is
+> **Hono on Workers**; the RateLimiter Durable Object is already implemented in
+> `src/rate-limit/` (see `docs/architecture/rate-limiting.md`), so Task 10 here is
+> superseded by that implementation.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the server-side authentication + authorization engine — JWT access tokens, rotating refresh tokens with reuse detection, PBKDF2 password hashing, 5-role RBAC with scope enforcement, Durable-Object rate limiting, Cloudflare Turnstile verification, CSRF protection, audit logging, and Zod validation — all proven by tests. **No UI.**
