@@ -2,7 +2,7 @@
 -- PENSA GCTU CMS — Programmes Seed (managed dropdown)
 -- Source: GCTU Undergraduate/Postgraduate programme listings (provided 2026-06-04)
 -- Idempotent: stable IDs + ON CONFLICT(id) DO NOTHING. Safe to re-run.
--- level ∈ Diploma | Degree | Masters
+-- level ∈ Diploma | Degree  (postgraduate MPhil/MSc excluded per scope: undergraduate membership)
 -- Covers FoE, FoCIS, and GCTU Business School (incl. Business Administration
 -- specializations and Business School diplomas).
 -- =============================================================================
@@ -16,9 +16,7 @@ INSERT INTO programmes (id, name, level) VALUES
   ('prog_foe_bsc_maths',          'BSc. Mathematics',                                    'Degree'),
   ('prog_foe_bsc_elec_eng',       'BSc. Electrical and Electronic Engineering',          'Degree'),
   ('prog_foe_bsc_actuarial',      'BSc. Actuarial Science with Data Analytics',          'Degree'),
-  ('prog_foe_bsc_comp_stats',     'BSc. Computational Statistics',                       'Degree'),
-  ('prog_foe_mphil_comp_eng',     'MPhil Computer Engineering',                          'Masters'),
-  ('prog_foe_msc_comp_eng',       'MSc. Computer Engineering',                           'Masters')
+  ('prog_foe_bsc_comp_stats',     'BSc. Computational Statistics',                       'Degree')
 ON CONFLICT(id) DO NOTHING;
 
 -- Faculty of Computing & Information Systems (FoCIS) — Bachelor (4 years) -----
