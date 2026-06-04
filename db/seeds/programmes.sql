@@ -3,9 +3,8 @@
 -- Source: GCTU Undergraduate/Postgraduate programme listings (provided 2026-06-04)
 -- Idempotent: stable IDs + ON CONFLICT(id) DO NOTHING. Safe to re-run.
 -- level ∈ Diploma | Degree | Masters
--- NOTE: BSc. Business Administration specialization list was partially cut off
---       in the source; visible options included below. Add more as a follow-up
---       seed when confirmed.
+-- Covers FoE, FoCIS, and GCTU Business School (incl. Business Administration
+-- specializations and Business School diplomas).
 -- =============================================================================
 
 -- Faculty of Engineering (FoE) ----------------------------------------------
@@ -61,5 +60,14 @@ ON CONFLICT(id) DO NOTHING;
 INSERT INTO programmes (id, name, level) VALUES
   ('prog_gbs_bba_hr',             'BSc. Business Administration (Human Resource Management)', 'Degree'),
   ('prog_gbs_bba_marketing',      'BSc. Business Administration (Marketing)',            'Degree'),
-  ('prog_gbs_bba_accounting',     'BSc. Business Administration (Accounting)',           'Degree')
+  ('prog_gbs_bba_accounting',     'BSc. Business Administration (Accounting)',           'Degree'),
+  ('prog_gbs_bba_management',     'BSc. Business Administration (Management)',           'Degree')
+ON CONFLICT(id) DO NOTHING;
+
+-- GCTU Business School — Diploma (2 years) -----------------------------------
+INSERT INTO programmes (id, name, level) VALUES
+  ('prog_gbs_dip_pr',             'Diploma in Public Relations',                         'Diploma'),
+  ('prog_gbs_dip_management',     'Diploma in Management',                               'Diploma'),
+  ('prog_gbs_dip_accounting',     'Diploma in Accounting',                               'Diploma'),
+  ('prog_gbs_dip_marketing',      'Diploma in Marketing',                                'Diploma')
 ON CONFLICT(id) DO NOTHING;
