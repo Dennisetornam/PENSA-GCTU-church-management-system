@@ -4,8 +4,9 @@ import type { RateLimiter } from "./rate-limit/rate-limiter.do";
 export interface Env {
   // Data
   DB: D1Database;
-  MEDIA: R2Bucket;
   KV: KVNamespace;
+  // MEDIA (R2) is wired once R2 is enabled on the account; optional until then.
+  MEDIA?: R2Bucket;
 
   // Durable Objects
   RATE_LIMITER: DurableObjectNamespace<RateLimiter>;
