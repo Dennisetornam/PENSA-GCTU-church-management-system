@@ -30,6 +30,10 @@ export const LIMIT_RULES = {
 
   // 4. Attendance Submission — 500 actions / hour / admin user
   attendance: { name: "attendance", limit: 500, windowMs: HOUR, scope: "user" },
+
+  // Registration helpers (public): draft autosave + image upload
+  registerDraft: { name: "register_draft", limit: 60, windowMs: HOUR, scope: "ip" },
+  registerImage: { name: "register_image", limit: 20, windowMs: HOUR, scope: "ip" },
 } as const satisfies Record<string, LimitRule>;
 
 export type LimitName = keyof typeof LIMIT_RULES;

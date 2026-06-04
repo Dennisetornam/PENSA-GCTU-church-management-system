@@ -148,6 +148,8 @@ CREATE TABLE members (
     residence_during_vacation TEXT,                     -- where they stay during vacation
     -- Cell (one per member)
     cell_id                   TEXT REFERENCES cells(id) ON DELETE SET NULL,
+    -- Primary gathering preference (collected at registration)
+    primary_gathering_type_id TEXT REFERENCES gathering_types(id) ON DELETE SET NULL,
     -- Spiritual information
     holy_ghost_baptism        INTEGER NOT NULL DEFAULT 0 CHECK (holy_ghost_baptism IN (0,1)),
     holy_ghost_baptism_date   TEXT,
@@ -221,18 +223,39 @@ CREATE INDEX ix_membership_history_member ON membership_history(member_id);
 -- =============================================================================
 
 CREATE TABLE registrations (
-    id               TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-    payload          TEXT NOT NULL,                     -- JSON snapshot of public submission
-    status           TEXT NOT NULL DEFAULT 'pending'
-                         CHECK (status IN ('pending','approved','rejected')),
-    submitted_at     TEXT NOT NULL DEFAULT (datetime('now')),
-    reviewed_by      TEXT REFERENCES users(id) ON DELETE SET NULL,
-    reviewed_at      TEXT,
-    member_id        TEXT REFERENCES members(id) ON DELETE SET NULL,  -- set when approved
-    rejection_reason TEXT
+    id                     TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    reference              TEXT,                              -- REG-YYYY-NNNN (assigned on submit)
+    status                 TEXT NOT NULL DEFAULT 'draft'
+                               CHECK (status IN ('draft','pending','approved','rejected')),
+    draft_token            TEXT,                              -- resume key while status='draft'
+    full_name              TEXT,
+    phone_number           TEXT,
+    whatsapp_number        TEXT,
+    date_of_birth          TEXT,
+    profile_image_key      TEXT,                              -- R2 draft object key
+    payload                TEXT,                              -- full JSON submission
+    possible_duplicate     INTEGER NOT NULL DEFAULT 0 CHECK (possible_duplicate IN (0,1)),
+    duplicate_of_member_id TEXT REFERENCES members(id) ON DELETE SET NULL,
+    duplicate_signals      TEXT,                              -- JSON array of signals
+    submitted_at           TEXT,
+    reviewed_by            TEXT REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_at            TEXT,
+    member_id              TEXT REFERENCES members(id) ON DELETE SET NULL,  -- set on approval
+    rejection_reason       TEXT,
+    created_at             TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at             TEXT NOT NULL DEFAULT (datetime('now'))
 );
-CREATE INDEX ix_registrations_status ON registrations(status);
+CREATE UNIQUE INDEX ux_registrations_draft_token ON registrations(draft_token) WHERE draft_token IS NOT NULL;
+CREATE UNIQUE INDEX ux_registrations_reference   ON registrations(reference)   WHERE reference IS NOT NULL;
+CREATE INDEX ix_registrations_status    ON registrations(status);
+CREATE INDEX ix_registrations_phone     ON registrations(phone_number);
 CREATE INDEX ix_registrations_submitted ON registrations(submitted_at);
+
+-- Per-year counter for registration references (REG-YYYY-NNNN).
+CREATE TABLE registration_ref_counters (
+    year     TEXT PRIMARY KEY,
+    last_seq INTEGER NOT NULL DEFAULT 0
+);
 
 -- =============================================================================
 -- SECTION 5 — EVENTS (v1 minimal; Events Module extends this — see future seams)

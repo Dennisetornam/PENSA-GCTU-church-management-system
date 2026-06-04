@@ -8,6 +8,7 @@ import type { Env, Variables } from "./types";
 import { RateLimiter } from "./rate-limit/rate-limiter.do";
 import { rateLimit, auditViolation } from "./rate-limit/middleware";
 import { LIMIT_RULES } from "./rate-limit/config";
+import { registrationRoutes } from "./registration/routes";
 
 // The Durable Object class must be exported from the Worker entry module.
 export { RateLimiter };
@@ -29,10 +30,9 @@ const requireAdmin: MiddlewareHandler<{ Bindings: Env; Variables: Variables }> =
   await next();
 };
 
-// ── 1. Public Member Registration — 10/hour/IP (QR code points here) ─────────
-app.post("/register", rateLimit(LIMIT_RULES.register, deps), (c) =>
-  c.json({ ok: true, message: "registration received, pending approval" }),
-);
+// ── 1. Public Member Registration — multi-step + draft + image + submit ──────
+//     (rate limiting is applied inside the registration sub-app per endpoint)
+app.route("/register", registrationRoutes);
 
 // ── 2. Admin Login — 5/15min/IP ──────────────────────────────────────────────
 app.post("/auth/login", rateLimit(LIMIT_RULES.login, deps), (c) =>
