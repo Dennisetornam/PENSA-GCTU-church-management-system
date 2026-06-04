@@ -8,6 +8,7 @@
 
 import { Hono } from "hono";
 import type { Context } from "hono";
+import { ZodError } from "zod";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import type { Env, Variables } from "../types";
 import { rateLimit, auditViolation } from "../rate-limit/middleware";
@@ -51,6 +52,14 @@ function detectImage(buf: Uint8Array): { type: string; ext: string } | null {
 }
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+app.onError((err, c) => {
+  if (err instanceof ZodError) {
+    return c.json({ error: "validation_failed", issues: err.issues }, 400);
+  }
+  console.error("registration error", err);
+  return c.json({ error: "internal_error" }, 500);
+});
 
 // Dropdown options
 app.get("/options", async (c) => c.json(await getRegistrationOptions(c.env.DB)));
