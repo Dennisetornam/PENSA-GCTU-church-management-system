@@ -65,7 +65,7 @@ app.onError((err, c) => {
 app.get("/options", async (c) => {
   const options = await getRegistrationOptions(c.env.DB);
   // Default to Cloudflare's "always passes" TEST site key until a real one is set.
-  const turnstileSiteKey = c.env.TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
+  const turnstileSiteKey = (c.env.TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA").trim();
   return c.json({ ...options, turnstileSiteKey });
 });
 
