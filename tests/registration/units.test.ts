@@ -11,7 +11,7 @@ const validMember = {
   otherNames: "",
   dateOfBirth: "2003-05-10",
   programmeId: "prog_focis_bsc_se",
-  residenceStatus: "non_resident" as const,
+  residenceStatus: "non_resident" as const, level: "200",
   residenceDetail: "Hall 7", vacationResidence: "East Legon",
   departmentIds: ["dept_media", "dept_prayer"],
   cellId: "cell_dunamis",

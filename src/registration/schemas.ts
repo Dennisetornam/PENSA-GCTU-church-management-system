@@ -30,6 +30,7 @@ export const memberDataSchema = z.object({
   otherNames: z.string().trim().max(60).optional().or(z.literal("")),
   dateOfBirth: isoDate,
   programmeId: z.string().min(1),
+  level: z.string().min(1),
   residenceStatus: z.enum(["hostel_resident", "non_resident"]),
   residenceDetail: z.string().trim().min(2).max(200),
   vacationResidence: z.string().trim().min(2).max(200),

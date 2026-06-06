@@ -7,7 +7,7 @@ import { makeTestEnv, type TestEnv } from "../helpers/env";
 const member = memberDataSchema.parse({
   firstName: "Yaw", lastName: "Owusu", otherNames: "",
   dateOfBirth: "2002-03-15", programmeId: "prog_focis_bsc_cs",
-  residenceStatus: "hostel_resident", residenceDetail: "Hall 7", vacationResidence: "Kumasi",
+  residenceStatus: "hostel_resident", level: "200", residenceDetail: "Hall 7", vacationResidence: "Kumasi",
   departmentIds: ["dept_media", "dept_music_drama"], cellId: "cell_moriah",
   holyGhostBaptism: true, holyGhostBaptismDate: "", waterBaptism: false, waterBaptismDate: "",
   phoneNumber: "0209998877", whatsappNumber: "0209998877", membershipStatus: "visitor",

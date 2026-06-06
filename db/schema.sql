@@ -166,6 +166,7 @@ CREATE TABLE members (
     profile_picture_key       TEXT,                     -- R2 object key
     -- Academic information
     programme_id              TEXT REFERENCES programmes(id) ON DELETE SET NULL,
+    level                     TEXT,                     -- 100 | 200 | 300 | 400 | ...
     -- Residence information
     residence_status          TEXT CHECK (residence_status IN ('hostel_resident','non_resident')),
     residence_detail          TEXT,                     -- hostel name (resident) OR location (non-resident)

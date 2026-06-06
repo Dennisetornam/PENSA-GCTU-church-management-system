@@ -19,7 +19,7 @@ interface Options {
 
 interface Form {
   firstName: string; lastName: string; otherNames: string; dateOfBirth: string; profileImageKey: string;
-  programmeId: string; residenceStatus: string; residenceDetail: string; vacationResidence: string;
+  programmeId: string; level: string; residenceStatus: string; residenceDetail: string; vacationResidence: string;
   departmentIds: string[]; cellId: string; membershipStatus: string;
   holyGhostBaptism: boolean; holyGhostBaptismDate: string; waterBaptism: boolean; waterBaptismDate: string;
   phoneNumber: string; whatsappNumber: string;
@@ -27,7 +27,7 @@ interface Form {
 
 const EMPTY: Form = {
   firstName: "", lastName: "", otherNames: "", dateOfBirth: "", profileImageKey: "",
-  programmeId: "", residenceStatus: "", residenceDetail: "", vacationResidence: "",
+  programmeId: "", level: "", residenceStatus: "", residenceDetail: "", vacationResidence: "",
   departmentIds: [], cellId: "", membershipStatus: "visitor",
   holyGhostBaptism: false, holyGhostBaptismDate: "", waterBaptism: false, waterBaptismDate: "",
   phoneNumber: "", whatsappNumber: "",
@@ -91,7 +91,7 @@ export function Register() {
 
   const valid: Record<number, boolean> = {
     0: !!(f.firstName && f.lastName && f.dateOfBirth && f.profileImageKey),
-    1: !!(f.programmeId && f.residenceStatus && f.residenceDetail && f.vacationResidence),
+    1: !!(f.programmeId && f.level && f.residenceStatus && f.residenceDetail && f.vacationResidence),
     2: !!(f.departmentIds.length && f.cellId && f.membershipStatus),
     3: true,
     4: phoneDigits(f.phoneNumber).length === 10,
@@ -199,6 +199,9 @@ function StepAcademic({ f, set, o }: { f: Form; set: (p: Partial<Form>) => void;
           {o.programmes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </div>
+      <div><Label>Level *</Label>
+        <Choice options={[["100", "100"], ["200", "200"], ["300", "300"], ["400", "400"], ["500", "500"], ["600", "600"]]} value={f.level} onChange={(v) => set({ level: v })} />
+      </div>
       <div><Label>Residence *</Label>
         <Choice options={[["hostel_resident", "Hostel resident"], ["non_resident", "Non-resident"]]} value={f.residenceStatus} onChange={(v) => set({ residenceStatus: v, residenceDetail: "" })} />
       </div>
@@ -272,6 +275,7 @@ function StepReview({ f, o, tsRef }: { f: Form; o: Options; tsRef: React.RefObje
   const rows: [string, string][] = [
     ["Name", [f.firstName, f.otherNames, f.lastName].filter(Boolean).join(" ")],
     ["Programme", name(o.programmes, f.programmeId)],
+    ["Level", f.level],
     ["Residence", `${f.residenceStatus === "hostel_resident" ? "Hostel" : "Non-resident"} · ${f.residenceDetail}`],
     ["Cell", name(o.cells, f.cellId)],
     ["Departments", f.departmentIds.map((d) => name(o.departments, d)).join(", ") || "—"],
