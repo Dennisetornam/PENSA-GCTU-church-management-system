@@ -20,7 +20,7 @@ function getCookie(res: Response, name: string): string | null {
 const validBody = (imageKey: string) => ({
   firstName: "Yaw", lastName: "Owusu", otherNames: "",
   dateOfBirth: "2002-03-15", programmeId: "prog_focis_bsc_cs",
-  residenceStatus: "hostel_resident", vacationResidence: "Kumasi",
+  residenceStatus: "hostel_resident", residenceDetail: "Hall 7", vacationResidence: "Kumasi",
   departmentIds: ["dept_media"], cellId: "cell_moriah",
   holyGhostBaptism: true, holyGhostBaptismDate: "", waterBaptism: false, waterBaptismDate: "",
   phoneNumber: "0209998877", whatsappNumber: "", membershipStatus: "visitor",

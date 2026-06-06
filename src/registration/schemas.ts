@@ -17,8 +17,7 @@ const optionalIsoDate = z.union([isoDate, z.literal("")]).optional();
 
 const phone = z
   .string()
-  .min(7)
-  .max(20)
+  .refine((v) => v.replace(/\D/g, "").length === 10, { message: "phone number must be 10 digits" })
   .transform(normalizeGhanaPhone)
   .refine((v) => /^\+\d{8,15}$/.test(v), { message: "invalid phone number" });
 
@@ -32,6 +31,7 @@ export const memberDataSchema = z.object({
   dateOfBirth: isoDate,
   programmeId: z.string().min(1),
   residenceStatus: z.enum(["hostel_resident", "non_resident"]),
+  residenceDetail: z.string().trim().min(2).max(200),
   vacationResidence: z.string().trim().min(2).max(200),
   departmentIds: z.array(z.string().min(1)).min(1, "select at least one department"),
   cellId: z.string().min(1),
@@ -42,7 +42,8 @@ export const memberDataSchema = z.object({
   phoneNumber: phone,
   whatsappNumber: optionalPhone,
   membershipStatus: z.enum(["actual_member", "visitor", "associate", "alumni"]),
-  primaryGatheringTypeId: z.string().min(1),
+  // Gathering type is chosen by the admin at check-in, not at registration.
+  primaryGatheringTypeId: z.string().optional(),
   profileImageKey: z.string().min(1, "profile picture is required"),
 });
 

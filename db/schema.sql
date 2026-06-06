@@ -168,6 +168,7 @@ CREATE TABLE members (
     programme_id              TEXT REFERENCES programmes(id) ON DELETE SET NULL,
     -- Residence information
     residence_status          TEXT CHECK (residence_status IN ('hostel_resident','non_resident')),
+    residence_detail          TEXT,                     -- hostel name (resident) OR location (non-resident)
     residence_during_vacation TEXT,                     -- where they stay during vacation
     -- Cell (one per member)
     cell_id                   TEXT REFERENCES cells(id) ON DELETE SET NULL,

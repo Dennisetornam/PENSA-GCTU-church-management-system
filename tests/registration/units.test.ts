@@ -12,7 +12,7 @@ const validMember = {
   dateOfBirth: "2003-05-10",
   programmeId: "prog_focis_bsc_se",
   residenceStatus: "non_resident" as const,
-  vacationResidence: "East Legon",
+  residenceDetail: "Hall 7", vacationResidence: "East Legon",
   departmentIds: ["dept_media", "dept_prayer"],
   cellId: "cell_dunamis",
   holyGhostBaptism: true,

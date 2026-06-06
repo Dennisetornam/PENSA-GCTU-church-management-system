@@ -19,19 +19,21 @@ interface Options {
 
 interface Form {
   firstName: string; lastName: string; otherNames: string; dateOfBirth: string; profileImageKey: string;
-  programmeId: string; residenceStatus: string; vacationResidence: string;
-  departmentIds: string[]; cellId: string; primaryGatheringTypeId: string; membershipStatus: string;
+  programmeId: string; residenceStatus: string; residenceDetail: string; vacationResidence: string;
+  departmentIds: string[]; cellId: string; membershipStatus: string;
   holyGhostBaptism: boolean; holyGhostBaptismDate: string; waterBaptism: boolean; waterBaptismDate: string;
   phoneNumber: string; whatsappNumber: string;
 }
 
 const EMPTY: Form = {
   firstName: "", lastName: "", otherNames: "", dateOfBirth: "", profileImageKey: "",
-  programmeId: "", residenceStatus: "", vacationResidence: "",
-  departmentIds: [], cellId: "", primaryGatheringTypeId: "", membershipStatus: "visitor",
+  programmeId: "", residenceStatus: "", residenceDetail: "", vacationResidence: "",
+  departmentIds: [], cellId: "", membershipStatus: "visitor",
   holyGhostBaptism: false, holyGhostBaptismDate: "", waterBaptism: false, waterBaptismDate: "",
   phoneNumber: "", whatsappNumber: "",
 };
+
+const phoneDigits = (s: string) => s.replace(/\D/g, "");
 
 const STEPS = ["Personal", "Academic & Home", "Church Life", "Spiritual", "Contact", "Review"];
 
@@ -89,10 +91,10 @@ export function Register() {
 
   const valid: Record<number, boolean> = {
     0: !!(f.firstName && f.lastName && f.dateOfBirth && f.profileImageKey),
-    1: !!(f.programmeId && f.residenceStatus && f.vacationResidence),
-    2: !!(f.departmentIds.length && f.cellId && f.primaryGatheringTypeId && f.membershipStatus),
+    1: !!(f.programmeId && f.residenceStatus && f.residenceDetail && f.vacationResidence),
+    2: !!(f.departmentIds.length && f.cellId && f.membershipStatus),
     3: true,
-    4: !!f.phoneNumber,
+    4: phoneDigits(f.phoneNumber).length === 10,
     5: !!token,
   };
 
@@ -198,8 +200,14 @@ function StepAcademic({ f, set, o }: { f: Form; set: (p: Partial<Form>) => void;
         </select>
       </div>
       <div><Label>Residence *</Label>
-        <Choice options={[["hostel_resident", "Hostel resident"], ["non_resident", "Non-resident"]]} value={f.residenceStatus} onChange={(v) => set({ residenceStatus: v })} />
+        <Choice options={[["hostel_resident", "Hostel resident"], ["non_resident", "Non-resident"]]} value={f.residenceStatus} onChange={(v) => set({ residenceStatus: v, residenceDetail: "" })} />
       </div>
+      {f.residenceStatus === "hostel_resident" && (
+        <div><Label>Name of hostel *</Label><input className="field" value={f.residenceDetail} onChange={(e) => set({ residenceDetail: e.target.value })} placeholder="e.g. Pentecost Hall" /></div>
+      )}
+      {f.residenceStatus === "non_resident" && (
+        <div><Label>Where do you stay? (location) *</Label><input className="field" value={f.residenceDetail} onChange={(e) => set({ residenceDetail: e.target.value })} placeholder="e.g. Madina, Accra" /></div>
+      )}
       <div><Label>Where do you stay during vacation? *</Label><input className="field" value={f.vacationResidence} onChange={(e) => set({ vacationResidence: e.target.value })} placeholder="e.g. Kumasi" /></div>
     </div>
   );
@@ -221,12 +229,6 @@ function StepChurch({ f, set, o }: { f: Form; set: (p: Partial<Form>) => void; o
       </div>
       <div><Label>Cell *</Label>
         <Choice options={o.cells.map((c) => [c.id, c.name] as [string, string])} value={f.cellId} onChange={(v) => set({ cellId: v })} />
-      </div>
-      <div><Label>Which gathering do you usually attend? *</Label>
-        <select className="field" value={f.primaryGatheringTypeId} onChange={(e) => set({ primaryGatheringTypeId: e.target.value })}>
-          <option value="">Select…</option>
-          {o.gatheringTypes.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-        </select>
       </div>
       <div><Label>I identify as a *</Label>
         <Choice options={[["visitor", "Visitor"], ["actual_member", "Member"], ["associate", "Associate"], ["alumni", "Alumni"]]} value={f.membershipStatus} onChange={(v) => set({ membershipStatus: v })} />
@@ -250,7 +252,13 @@ function StepContact({ f, set }: { f: Form; set: (p: Partial<Form>) => void }) {
   const [same, setSame] = useState(false);
   return (
     <div className="space-y-4">
-      <div><Label>Active phone number *</Label><input type="tel" inputMode="tel" className="field" value={f.phoneNumber} onChange={(e) => set({ phoneNumber: e.target.value })} placeholder="024 000 0000" /></div>
+      <div>
+        <Label>Active phone number *</Label>
+        <input type="tel" inputMode="tel" className="field" value={f.phoneNumber} onChange={(e) => set({ phoneNumber: e.target.value })} placeholder="024 000 0000" />
+        {f.phoneNumber.length > 0 && phoneDigits(f.phoneNumber).length !== 10 && (
+          <p className="mt-1 text-xs text-clay">Phone number must be exactly 10 digits.</p>
+        )}
+      </div>
       <label className="flex items-center gap-2 text-sm text-ink-soft">
         <input type="checkbox" checked={same} onChange={(e) => { setSame(e.target.checked); if (e.target.checked) set({ whatsappNumber: f.phoneNumber }); }} /> WhatsApp is the same as my phone
       </label>
@@ -264,9 +272,9 @@ function StepReview({ f, o, tsRef }: { f: Form; o: Options; tsRef: React.RefObje
   const rows: [string, string][] = [
     ["Name", [f.firstName, f.otherNames, f.lastName].filter(Boolean).join(" ")],
     ["Programme", name(o.programmes, f.programmeId)],
+    ["Residence", `${f.residenceStatus === "hostel_resident" ? "Hostel" : "Non-resident"} · ${f.residenceDetail}`],
     ["Cell", name(o.cells, f.cellId)],
     ["Departments", f.departmentIds.map((d) => name(o.departments, d)).join(", ") || "—"],
-    ["Gathering", name(o.gatheringTypes, f.primaryGatheringTypeId)],
     ["Phone", f.phoneNumber],
   ];
   return (
