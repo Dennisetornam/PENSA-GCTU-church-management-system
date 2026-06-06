@@ -115,6 +115,31 @@ export async function getGrowth(db: D1Database, p: { limit?: number } = {}) {
   return (results ?? []).reverse();
 }
 
+export interface Personality {
+  id: string;
+  member_code: string | null;
+  full_name: string;
+  profile_picture_key: string | null;
+  attendances: number;
+}
+
+/** Personality of the Week — the member with the most attendances in the last 7 days. */
+export async function getPersonalityOfWeek(db: D1Database, now: Date = new Date()): Promise<Personality | null> {
+  const cutoff = daysAgo(now, 7);
+  const row = await db
+    .prepare(
+      `SELECT m.id, m.member_code, m.full_name, m.profile_picture_key, count(*) AS attendances
+       FROM attendance_records ar
+       JOIN attendance_sessions s ON s.id = ar.session_id
+       JOIN members m ON m.id = ar.member_id
+       WHERE ar.status IN ('present','late') AND s.session_date >= ? AND s.deleted_at IS NULL AND m.deleted_at IS NULL
+       GROUP BY m.id ORDER BY attendances DESC, m.last_name LIMIT 1`,
+    )
+    .bind(cutoff)
+    .first<Personality>();
+  return row ?? null;
+}
+
 /** Build (or refresh) the membership snapshot for a date. Idempotent. */
 export async function buildMembershipSnapshot(db: D1Database, date: string, now: Date = new Date()): Promise<void> {
   const s = await getSummary(db, now);

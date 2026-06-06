@@ -109,8 +109,8 @@ app.get("/image", async (c) => {
   });
 });
 
-// Final submit
-app.post("/", rateLimit(LIMIT_RULES.register, deps), async (c) => {
+// Final submit (path-distinct from the SPA page at GET /register)
+app.post("/submit", rateLimit(LIMIT_RULES.register, deps), async (c) => {
   const ip = c.req.header("CF-Connecting-IP") ?? undefined;
   const ua = c.req.header("user-agent") ?? null;
   const data = submitSchema.parse(await c.req.json());

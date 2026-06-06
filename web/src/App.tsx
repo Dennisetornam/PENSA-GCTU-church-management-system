@@ -5,6 +5,12 @@ import { Login } from "./pages/Login";
 import { Layout, ComingSoon } from "./pages/Layout";
 import { Overview } from "./pages/Overview";
 import { Registrations } from "./pages/Registrations";
+import { Members } from "./pages/Members";
+import { Attendance } from "./pages/Attendance";
+import { Analytics } from "./pages/Analytics";
+import { Reports } from "./pages/Reports";
+import { Departments, Cells } from "./pages/Groups";
+import { Register } from "./pages/Register";
 
 function Splash() {
   return (
@@ -16,20 +22,26 @@ function Splash() {
 
 export function App() {
   const { me, loading } = useAuth();
-  if (loading) return <Splash />;
 
   return (
     <Routes>
-      <Route path="/login" element={me ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route path="/dashboard" element={me ? <Layout /> : <Navigate to="/login" replace />}>
+      {/* Public */}
+      <Route path="/register" element={<Register />} />
+
+      {/* Auth-gated below */}
+      <Route path="/login" element={loading ? <Splash /> : me ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route
+        path="/dashboard"
+        element={loading ? <Splash /> : me ? <Layout /> : <Navigate to="/login" replace />}
+      >
         <Route index element={<Overview />} />
         <Route path="registrations" element={<Registrations />} />
-        <Route path="members" element={<ComingSoon title="Members" />} />
-        <Route path="attendance" element={<ComingSoon title="Attendance" />} />
-        <Route path="departments" element={<ComingSoon title="Departments" />} />
-        <Route path="cells" element={<ComingSoon title="Cells" />} />
-        <Route path="reports" element={<ComingSoon title="Reports" />} />
-        <Route path="analytics" element={<ComingSoon title="Analytics" />} />
+        <Route path="members" element={<Members />} />
+        <Route path="attendance" element={<Attendance />} />
+        <Route path="departments" element={<Departments />} />
+        <Route path="cells" element={<Cells />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<ComingSoon title="Settings" />} />
       </Route>
       <Route path="*" element={<Navigate to={me ? "/dashboard" : "/login"} replace />} />

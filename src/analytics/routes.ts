@@ -2,11 +2,14 @@
 import { Hono } from "hono";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
-import { getSummary, getDistribution, getBaptism, getAttendanceTrend, getGrowth } from "./repository";
+import { getSummary, getDistribution, getBaptism, getAttendanceTrend, getGrowth, getPersonalityOfWeek } from "./repository";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 app.get("/summary", authorize("analytics:view"), async (c) => c.json(await getSummary(c.env.DB)));
+
+// Personality of the Week — most attendances in the last 7 days.
+app.get("/personality", authorize("analytics:view"), async (c) => c.json({ member: await getPersonalityOfWeek(c.env.DB) }));
 
 app.get("/distribution", authorize("analytics:view"), async (c) => {
   const dim = c.req.query("dimension");

@@ -86,7 +86,7 @@ describe("Module 3 — registration routes", () => {
   it("submits a full registration as pending (Turnstile verified)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 }));
     const res = await app.fetch(
-      new Request(`${ORIGIN}/register`, {
+      new Request(`${ORIGIN}/register/submit`, {
         method: "POST",
         headers: { "content-type": "application/json", origin: ORIGIN },
         body: JSON.stringify(validBody("registrations/drafts/x/y.png")),
@@ -104,7 +104,7 @@ describe("Module 3 — registration routes", () => {
     const bad = validBody("");
     bad.profileImageKey = "";
     const res = await app.fetch(
-      new Request(`${ORIGIN}/register`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify(bad) }),
+      new Request(`${ORIGIN}/register/submit`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify(bad) }),
       env as never,
     );
     expect(res.status).toBe(400);
@@ -113,7 +113,7 @@ describe("Module 3 — registration routes", () => {
   it("rejects submission when Turnstile fails", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ success: false }), { status: 200 }));
     const res = await app.fetch(
-      new Request(`${ORIGIN}/register`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify(validBody("registrations/drafts/x/y.png")) }),
+      new Request(`${ORIGIN}/register/submit`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify(validBody("registrations/drafts/x/y.png")) }),
       env as never,
     );
     expect(res.status).toBe(400);

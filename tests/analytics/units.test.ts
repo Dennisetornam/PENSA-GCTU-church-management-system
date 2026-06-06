@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
-  getSummary, getDistribution, getBaptism, getAttendanceTrend, getGrowth, buildMembershipSnapshot,
+  getSummary, getDistribution, getBaptism, getAttendanceTrend, getGrowth, buildMembershipSnapshot, getPersonalityOfWeek,
 } from "../../src/analytics/repository";
 import { createSession, markAttendance, closeSession } from "../../src/attendance/repository";
 import { makeTestEnv, type TestEnv } from "../helpers/env";
@@ -79,6 +79,19 @@ describe("Module 7 — analytics", () => {
     const trend = (await getAttendanceTrend(env.DB as never, {})) as { session_date: string; attended: number }[];
     expect(trend.length).toBe(1);
     expect(trend[0]!.attended).toBe(1);
+  });
+
+  it("personality of the week = most attendances in last 7 days", async () => {
+    await addMember(env, "1", { cell: "cell_dunamis" });
+    await addMember(env, "2", { cell: "cell_dunamis" });
+    // member 1 attends 2 sessions, member 2 attends 1 — within last 7 days of NOW
+    const s1 = await createSession(env.DB as never, { gatheringTypeId: "gt_sunday", sessionDate: "2026-06-01" });
+    const s2 = await createSession(env.DB as never, { gatheringTypeId: "gt_midweek", sessionDate: "2026-06-03" });
+    await markAttendance(env.DB as never, s1.id, [{ memberId: "1", status: "present" }, { memberId: "2", status: "present" }], "manual", null);
+    await markAttendance(env.DB as never, s2.id, [{ memberId: "1", status: "present" }], "manual", null);
+    const p = await getPersonalityOfWeek(env.DB as never, NOW);
+    expect(p?.id).toBe("1");
+    expect(p?.attendances).toBe(2);
   });
 
   it("growth snapshot builds and reads idempotently", async () => {
