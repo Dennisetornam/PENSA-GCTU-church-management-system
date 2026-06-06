@@ -70,3 +70,10 @@ id = "e90f8b91e7bd428daf35aff89839ee7a"
 [[env.production.r2_buckets]]
 binding = "MEDIA"
 bucket_name = "pensa-gctu-media-production"
+# NOTE: A custom domain (e.g. register.pensagctu.org) requires its DNS zone to be
+# on THIS Cloudflare account. pensagctu.org is the university's zone and is not on
+# this account, so it can't be provisioned here. To enable, either add the zone
+# (or a delegated subdomain) to Cloudflare, or use a domain you control:
+# [[env.production.routes]]
+# pattern = "register.yourdomain.org"
+# custom_domain = true
