@@ -61,8 +61,13 @@ app.onError((err, c) => {
   return c.json({ error: "internal_error" }, 500);
 });
 
-// Dropdown options
-app.get("/options", async (c) => c.json(await getRegistrationOptions(c.env.DB)));
+// Dropdown options (+ the public Turnstile site key for the form)
+app.get("/options", async (c) => {
+  const options = await getRegistrationOptions(c.env.DB);
+  // Default to Cloudflare's "always passes" TEST site key until a real one is set.
+  const turnstileSiteKey = c.env.TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
+  return c.json({ ...options, turnstileSiteKey });
+});
 
 // Save / update draft
 app.post("/draft", rateLimit(LIMIT_RULES.registerDraft, deps), async (c) => {

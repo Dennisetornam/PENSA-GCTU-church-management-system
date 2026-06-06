@@ -13,6 +13,8 @@ export interface Env {
   // Secrets (wrangler secret put …)
   JWT_SECRET: string;
   TURNSTILE_SECRET: string;
+  // Public Turnstile site key (non-secret; exposed to the registration form).
+  TURNSTILE_SITE_KEY?: string;
   // INTERIM: shared-secret guard for admin endpoints until Phase-1 JWT auth lands.
   ADMIN_API_TOKEN?: string;
 }

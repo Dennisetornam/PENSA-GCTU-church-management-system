@@ -2,8 +2,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
 import { ArchMark } from "./brand";
 import { Login } from "./pages/Login";
-import { Layout, ComingSoon } from "./pages/Layout";
+import { Layout } from "./pages/Layout";
 import { Overview } from "./pages/Overview";
+import { Settings } from "./pages/Settings";
 import { Registrations } from "./pages/Registrations";
 import { Members } from "./pages/Members";
 import { Attendance } from "./pages/Attendance";
@@ -42,7 +43,7 @@ export function App() {
         <Route path="cells" element={<Cells />} />
         <Route path="reports" element={<Reports />} />
         <Route path="analytics" element={<Analytics />} />
-        <Route path="settings" element={<ComingSoon title="Settings" />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to={me ? "/dashboard" : "/login"} replace />} />
     </Routes>

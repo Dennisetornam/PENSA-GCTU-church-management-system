@@ -14,6 +14,7 @@ interface Options {
   departments: { id: string; name: string }[];
   cells: { id: string; name: string }[];
   gatheringTypes: { id: string; name: string }[];
+  turnstileSiteKey?: string;
 }
 
 interface Form {
@@ -55,7 +56,7 @@ export function Register() {
     const render = () => {
       const w = (window as unknown as { turnstile?: { render: (el: HTMLElement, opts: object) => void } }).turnstile;
       if (w && tsRef.current && !tsRef.current.hasChildNodes()) {
-        w.render(tsRef.current, { sitekey: TURNSTILE_SITEKEY, callback: (t: string) => setToken(t) });
+        w.render(tsRef.current, { sitekey: options.data?.turnstileSiteKey ?? TURNSTILE_SITEKEY, callback: (t: string) => setToken(t) });
       }
     };
     if (!document.getElementById("cf-turnstile-script")) {
@@ -67,7 +68,7 @@ export function Register() {
     } else render();
     const t = setInterval(render, 400);
     return () => clearInterval(t);
-  }, [step]);
+  }, [step, options.data]);
 
   async function uploadPhoto(file: File) {
     setUploading(true);

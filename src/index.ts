@@ -4,6 +4,7 @@ import type { Env, Variables } from "./types";
 import { RateLimiter } from "./rate-limit/rate-limiter.do";
 import { registrationRoutes } from "./registration/routes";
 import { adminRoutes } from "./admin/routes";
+import { userRoutes } from "./admin/users";
 import { authRoutes } from "./auth/routes";
 import { attendanceRoutes } from "./attendance/routes";
 import { analyticsRoutes } from "./analytics/routes";
@@ -24,6 +25,9 @@ app.route("/auth", authRoutes);
 
 // Admin API (JWT + RBAC) — registrations approval queue + members
 app.route("/api", adminRoutes);
+
+// Admin user management (super_admin / church_admin)
+app.route("/api/users", userRoutes);
 
 // Attendance — sessions, manual + QR marking, history (JWT + RBAC, rate-limited)
 app.route("/api/attendance", attendanceRoutes);

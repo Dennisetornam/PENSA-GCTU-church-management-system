@@ -5,7 +5,8 @@ import { z } from "zod";
 import type { Env, Variables } from "../types";
 import { rateLimit, auditViolation } from "../rate-limit/middleware";
 import { LIMIT_RULES } from "../rate-limit/config";
-import { verifyPassword } from "./password";
+import { verifyPassword, hashPassword } from "./password";
+import { getUserById } from "./scope";
 import { signAccessToken } from "./jwt";
 import { issueRefreshToken, rotateRefreshToken, revokeFamilyByToken, RefreshReuseError } from "./refresh";
 import { getUserByEmail, resolveScope, resolveScopeByUserId } from "./scope";
@@ -116,6 +117,29 @@ app.get("/me", async (c) => {
   const auth = await getAuth(c.req.raw, c.env.JWT_SECRET);
   if (!auth) return c.json({ error: "unauthorized" }, 401);
   return c.json({ userId: auth.userId, role: auth.role, scope: auth.scope });
+});
+
+// ── Change password (self) ────────────────────────────────────────────────────
+const changePwSchema = z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(12).max(128) });
+app.post("/change-password", async (c) => {
+  if (!sameOrigin(c.req.raw)) return c.json({ error: "bad origin" }, 403);
+  const auth = await getAuth(c.req.raw, c.env.JWT_SECRET);
+  if (!auth) return c.json({ error: "unauthorized" }, 401);
+  let body;
+  try { body = changePwSchema.parse(await c.req.json()); }
+  catch { return c.json({ error: "new password must be at least 12 characters" }, 400); }
+
+  const user = await getUserById(c.env.DB, auth.userId);
+  if (!user || !(await verifyPassword(body.currentPassword, user.password_hash))) {
+    return c.json({ error: "current password is incorrect" }, 400);
+  }
+  const now = new Date().toISOString();
+  await c.env.DB.prepare("UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?")
+    .bind(await hashPassword(body.newPassword), now, auth.userId).run();
+  // sign out everywhere (revoke all refresh families)
+  await c.env.DB.prepare("UPDATE refresh_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, auth.userId).run();
+  await audit(c.env, "auth.password.changed", auth.userId, c.req.header("CF-Connecting-IP") ?? null, null);
+  return c.json({ ok: true });
 });
 
 export const authRoutes = app;
