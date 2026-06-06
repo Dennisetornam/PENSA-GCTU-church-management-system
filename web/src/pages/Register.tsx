@@ -176,7 +176,7 @@ function StepPersonal({ f, set, preview, uploading, onPhoto }: { f: Form; set: (
           <div className="grid h-28 w-28 place-items-center overflow-hidden rounded-full border-2 border-dashed border-gold/40 bg-gold/5 text-gold">
             {preview ? <img src={preview} alt="" className="h-full w-full object-cover" /> : uploading ? <Spinner /> : <Upload size={26} />}
           </div>
-          <input type="file" accept="image/*" capture="user" className="hidden" onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
+          <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
           <span className="mt-2 block text-center text-xs font-medium text-ink-soft/70">{f.profileImageKey ? "Change photo" : "Add photo *"}</span>
         </label>
       </div>
@@ -200,7 +200,7 @@ function StepAcademic({ f, set, o }: { f: Form; set: (p: Partial<Form>) => void;
         </select>
       </div>
       <div><Label>Level *</Label>
-        <Choice options={[["100", "100"], ["200", "200"], ["300", "300"], ["400", "400"], ["500", "500"], ["600", "600"]]} value={f.level} onChange={(v) => set({ level: v })} />
+        <Choice options={[["100", "100"], ["200", "200"], ["300", "300"], ["400", "400"]]} value={f.level} onChange={(v) => set({ level: v })} />
       </div>
       <div><Label>Residence *</Label>
         <Choice options={[["hostel_resident", "Hostel resident"], ["non_resident", "Non-resident"]]} value={f.residenceStatus} onChange={(v) => set({ residenceStatus: v, residenceDetail: "" })} />
