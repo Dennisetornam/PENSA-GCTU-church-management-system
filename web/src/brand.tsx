@@ -1,25 +1,24 @@
-// Brand marks: a pointed-arch monogram (church window) rendered in gold.
-export function ArchMark({ size = 40, className = "" }: { size?: number; className?: string }) {
+// Brand marks. The official PENSA-GHANA × GCTU seal lives at /logo.png
+// (served from web/public/logo.png).
+
+export function Logo({ size = 40, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className={className} aria-hidden>
-      <path
-        d="M24 3C14 3 9 11 9 21v22a2 2 0 0 0 2 2h26a2 2 0 0 0 2-2V21C39 11 34 3 24 3Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        fill="none"
-      />
-      <path d="M24 12c-5 0-7 5-7 10v18h14V22c0-5-2-10-7-10Z" stroke="currentColor" strokeWidth="1.4" opacity="0.55" />
-      <path d="M24 3v42M9 30h30" stroke="currentColor" strokeWidth="1.2" opacity="0.35" />
-      <circle cx="24" cy="20" r="2.4" fill="currentColor" />
-    </svg>
+    <img
+      src="/logo.png"
+      alt="PENSA GCTU"
+      width={size}
+      height={size}
+      className={className}
+      style={{ objectFit: "contain", display: "block" }}
+    />
   );
 }
 
 export function Wordmark({ subtle = false }: { subtle?: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <span className={subtle ? "text-gold" : "text-gold"}>
-        <ArchMark size={34} />
+      <span className="grid h-11 w-11 place-items-center rounded-full bg-white p-1 shadow-sm ring-1 ring-black/5">
+        <Logo size={38} />
       </span>
       <div className="leading-tight">
         <div className={`font-display text-lg font-semibold ${subtle ? "text-ivory-soft" : "text-ink"}`}>PENSA GCTU</div>

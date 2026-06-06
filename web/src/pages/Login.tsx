@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { useAuth } from "../auth";
-import { ArchMark, Wordmark } from "../brand";
+import { Logo, Wordmark } from "../brand";
 import { Spinner } from "../ui";
 
 export function Login() {
@@ -36,9 +36,9 @@ export function Login() {
           className="absolute inset-0 opacity-[0.06]"
           style={{ backgroundImage: "radial-gradient(circle at 1px 1px, #fff 1px, transparent 0)", backgroundSize: "26px 26px" }}
         />
-        {/* large arch window */}
-        <div className="absolute -right-24 top-1/2 hidden h-[34rem] w-[34rem] -translate-y-1/2 text-gold/20 xl:block">
-          <ArchMark size={544} />
+        {/* large faded seal */}
+        <div className="pointer-events-none absolute -right-32 top-1/2 hidden -translate-y-1/2 opacity-10 xl:block">
+          <Logo size={560} />
         </div>
         <div className="relative flex h-full flex-col justify-between p-14">
           <Wordmark subtle />

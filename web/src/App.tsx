@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
-import { ArchMark } from "./brand";
+import { Logo } from "./brand";
 import { Login } from "./pages/Login";
 import { Layout } from "./pages/Layout";
 import { Overview } from "./pages/Overview";
@@ -15,8 +15,8 @@ import { Register } from "./pages/Register";
 
 function Splash() {
   return (
-    <div className="grain grid min-h-screen place-items-center bg-vespers-deep text-gold">
-      <div className="animate-pulse"><ArchMark size={56} /></div>
+    <div className="grain grid min-h-screen place-items-center bg-vespers-deep">
+      <div className="animate-pulse rounded-full bg-white/95 p-3 shadow-gold"><Logo size={64} /></div>
     </div>
   );
 }
