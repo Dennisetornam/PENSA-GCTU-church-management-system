@@ -7,6 +7,7 @@ import { Overview } from "./pages/Overview";
 import { Settings } from "./pages/Settings";
 import { Registrations } from "./pages/Registrations";
 import { Members } from "./pages/Members";
+import { MemberProfile } from "./pages/MemberProfile";
 import { Attendance } from "./pages/Attendance";
 import { Analytics } from "./pages/Analytics";
 import { Reports } from "./pages/Reports";
@@ -38,6 +39,7 @@ export function App() {
         <Route index element={<Overview />} />
         <Route path="registrations" element={<Registrations />} />
         <Route path="members" element={<Members />} />
+        <Route path="members/:id" element={<MemberProfile />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="departments" element={<Departments />} />
         <Route path="cells" element={<Cells />} />

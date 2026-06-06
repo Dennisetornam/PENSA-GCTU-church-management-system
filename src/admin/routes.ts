@@ -6,7 +6,8 @@ import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { approveRegistration, rejectRegistration, NotFoundError, ConflictError } from "../registration/approval";
-import { listMembers, getMember, changeMemberStatus } from "../members/repository";
+import { listMembers, getMember, changeMemberStatus, updateMember } from "../members/repository";
+import { normalizeGhanaPhone } from "../registration/schemas";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -86,6 +87,54 @@ app.get("/members/:id", authorize("members:read"), async (c) => {
   const member = await getMember(c.env.DB, c.req.param("id"));
   if (!member) return c.json({ error: "not found" }, 404);
   return c.json(member);
+});
+
+// Stream a member's profile photo from R2
+app.get("/members/:id/photo", authorize("members:read"), async (c) => {
+  const row = await c.env.DB.prepare("SELECT profile_picture_key FROM members WHERE id = ? AND deleted_at IS NULL")
+    .bind(c.req.param("id")).first<{ profile_picture_key: string | null }>();
+  if (!row?.profile_picture_key) return c.json({ error: "no photo" }, 404);
+  const obj = await c.env.MEDIA!.get(row.profile_picture_key);
+  if (!obj) return c.json({ error: "not found" }, 404);
+  return new Response(obj.body, {
+    headers: { "content-type": obj.httpMetadata?.contentType ?? "image/jpeg", "cache-control": "private, max-age=300" },
+  });
+});
+
+// Update / edit a member (super_admin / church_admin / scoped leader)
+const memberUpdateSchema = z.object({
+  firstName: z.string().trim().min(1).max(60),
+  lastName: z.string().trim().min(1).max(60),
+  otherNames: z.string().max(60).optional().nullable(),
+  dateOfBirth: z.string().optional().nullable(),
+  gender: z.enum(["male", "female"]).optional().nullable(),
+  programmeId: z.string().optional().nullable(),
+  level: z.string().optional().nullable(),
+  residenceStatus: z.enum(["hostel_resident", "non_resident"]).optional().nullable(),
+  residenceDetail: z.string().max(200).optional().nullable(),
+  vacationResidence: z.string().max(200).optional().nullable(),
+  cellId: z.string().optional().nullable(),
+  holyGhostBaptism: z.boolean(),
+  holyGhostBaptismDate: z.string().optional().nullable(),
+  waterBaptism: z.boolean(),
+  waterBaptismDate: z.string().optional().nullable(),
+  phoneNumber: z.string().min(7).transform(normalizeGhanaPhone),
+  whatsappNumber: z.string().optional().nullable(),
+  membershipStatus: z.enum(STATUSES),
+  departmentIds: z.array(z.string()).optional(),
+  notes: z.string().max(2000).optional().nullable(),
+});
+app.post("/members/:id", authorize("members:update"), async (c) => {
+  const body = memberUpdateSchema.parse(await c.req.json());
+  try {
+    await updateMember(c.env.DB, c.req.param("id"), body, c.get("userId"));
+  } catch (e) {
+    const msg = String((e as Error).message || "");
+    if (msg.includes("not found")) return c.json({ error: "member not found" }, 404);
+    if (msg.toUpperCase().includes("UNIQUE")) return c.json({ error: "that phone number belongs to another member" }, 409);
+    throw e;
+  }
+  return c.json({ ok: true });
 });
 
 const statusChangeSchema = z.object({ status: z.enum(STATUSES), reason: z.string().max(500).optional() });

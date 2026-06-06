@@ -77,6 +77,61 @@ export async function getMember(db: D1Database, id: string): Promise<unknown | n
   return { ...member, departments: departments ?? [] };
 }
 
+export interface MemberUpdate {
+  firstName: string; lastName: string; otherNames?: string | null; dateOfBirth?: string | null; gender?: string | null;
+  programmeId?: string | null; level?: string | null; residenceStatus?: string | null; residenceDetail?: string | null;
+  vacationResidence?: string | null; cellId?: string | null;
+  holyGhostBaptism: boolean; holyGhostBaptismDate?: string | null; waterBaptism: boolean; waterBaptismDate?: string | null;
+  phoneNumber: string; whatsappNumber?: string | null; membershipStatus: string; departmentIds?: string[]; notes?: string | null;
+}
+
+const bit = (b: unknown) => (b ? 1 : 0);
+const nz = (s: unknown) => (s && String(s).length > 0 ? String(s) : null);
+
+export async function updateMember(db: D1Database, id: string, u: MemberUpdate, changedBy: string | null): Promise<void> {
+  const cur = await db
+    .prepare("SELECT membership_status FROM members WHERE id = ? AND deleted_at IS NULL")
+    .bind(id)
+    .first<{ membership_status: string }>();
+  if (!cur) throw new Error("member not found");
+
+  await db
+    .prepare(
+      `UPDATE members SET first_name=?, last_name=?, other_names=?, date_of_birth=?, gender=?, programme_id=?, level=?,
+         residence_status=?, residence_detail=?, residence_during_vacation=?, cell_id=?, holy_ghost_baptism=?,
+         holy_ghost_baptism_date=?, water_baptism=?, water_baptism_date=?, phone_number=?, whatsapp_number=?,
+         membership_status=?, notes=? WHERE id=?`,
+    )
+    .bind(
+      u.firstName, u.lastName, nz(u.otherNames), nz(u.dateOfBirth), nz(u.gender), nz(u.programmeId), nz(u.level),
+      nz(u.residenceStatus), nz(u.residenceDetail), nz(u.vacationResidence), nz(u.cellId), bit(u.holyGhostBaptism),
+      nz(u.holyGhostBaptismDate), bit(u.waterBaptism), nz(u.waterBaptismDate), u.phoneNumber, nz(u.whatsappNumber),
+      u.membershipStatus, nz(u.notes), id,
+    )
+    .run();
+
+  if (u.membershipStatus && u.membershipStatus !== cur.membership_status) {
+    await db
+      .prepare(
+        `INSERT INTO membership_history (id, member_id, from_status, to_status, reason, changed_by, created_at)
+         VALUES (lower(hex(randomblob(16))), ?, ?, ?, 'edited by admin', ?, ?)`,
+      )
+      .bind(id, cur.membership_status, u.membershipStatus, changedBy, new Date().toISOString())
+      .run();
+  }
+
+  if (u.departmentIds) {
+    await db.prepare("DELETE FROM member_departments WHERE member_id = ?").bind(id).run();
+    const now = new Date().toISOString();
+    for (const deptId of u.departmentIds) {
+      await db
+        .prepare("INSERT OR IGNORE INTO member_departments (id, member_id, department_id, role_in_department, joined_at) VALUES (lower(hex(randomblob(16))), ?, ?, 'member', ?)")
+        .bind(id, deptId, now)
+        .run();
+    }
+  }
+}
+
 export async function changeMemberStatus(
   db: D1Database,
   id: string,

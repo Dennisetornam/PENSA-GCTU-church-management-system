@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Search, ChevronRight } from "lucide-react";
 import { api } from "../api";
 import { Avatar, Badge, Spinner, Empty } from "../ui";
 
@@ -45,14 +46,15 @@ export function Members() {
       ) : (
         <div className="card divide-y divide-ink/[0.06] overflow-hidden">
           {rows.map((m) => (
-            <div key={m.id} className="flex items-center gap-4 p-4 transition hover:bg-ink/[0.02]">
+            <Link key={m.id} to={`/dashboard/members/${m.id}`} className="flex items-center gap-4 p-4 transition hover:bg-ink/[0.03]">
               <Avatar name={m.full_name} />
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-ink">{m.full_name}</div>
                 <div className="text-sm text-ink-soft/55">{m.member_code ?? "—"} · {m.phone_number}</div>
               </div>
               <Badge tone={STATUS_TONE[m.membership_status] ?? "ink"}>{label(m.membership_status)}</Badge>
-            </div>
+              <ChevronRight size={18} className="text-ink-soft/35" />
+            </Link>
           ))}
         </div>
       )}
