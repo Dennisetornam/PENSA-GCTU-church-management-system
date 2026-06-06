@@ -1,16 +1,42 @@
-// Tiny same-origin API client. Auth rides on the __Host-at cookie (credentials).
+// Same-origin API client. Auth rides on the __Host-at cookie (credentials).
+// On a 401 it transparently refreshes the access token via the rotating
+// __Host-rt cookie and retries once, so sessions survive past the 15-min
+// access-token lifetime (up to the 30-day refresh window).
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+let refreshing: Promise<boolean> | null = null;
+function refreshSession(): Promise<boolean> {
+  if (!refreshing) {
+    refreshing = fetch("/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+    })
+      .then((r) => r.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshing = null;
+      });
+  }
+  return refreshing;
+}
+
+async function request<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
   const res = await fetch(path, {
     credentials: "include",
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
     ...init,
   });
+
+  // Transparent refresh-and-retry on an expired access token.
+  if (res.status === 401 && !retried && !path.startsWith("/auth/")) {
+    if (await refreshSession()) return request<T>(path, init, true);
+  }
+
   if (!res.ok) {
     let msg = res.statusText;
     try {
