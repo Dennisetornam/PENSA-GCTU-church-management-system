@@ -97,13 +97,16 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
   const roster = useQuery({ queryKey: ["roster", sessionId, dq], queryFn: () => api.get<{ results: RosterRow[] }>(`/api/attendance/sessions/${sessionId}/roster?q=${encodeURIComponent(dq)}&limit=40`) });
 
   const mark = useMutation({
-    mutationFn: (memberId: string) => api.post(`/api/attendance/sessions/${sessionId}/records`, { marks: [{ memberId, status: "present" }] }, ),
+    mutationFn: (memberId: string) => api.put(`/api/attendance/sessions/${sessionId}/records`, { marks: [{ memberId, status: "present" }] }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["roster", sessionId] }),
   });
   const close = useMutation({
     mutationFn: () => api.post(`/api/attendance/sessions/${sessionId}/close`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["att-sessions"] }); onBack(); },
   });
+  const endSession = () => {
+    if (window.confirm("End this session? Anyone not checked in will be recorded as absent.")) close.mutate();
+  };
 
   const rows = roster.data?.results ?? [];
   const presentCount = rows.filter((r) => r.status === "present" || r.status === "late").length;
@@ -116,8 +119,8 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
           <div className="eyebrow mb-1.5">{session.data?.gathering_name ?? "Session"} · {session.data?.session_date}</div>
           <h1 className="font-display text-3xl font-semibold text-ink">Check members in</h1>
         </div>
-        <button onClick={() => close.mutate()} disabled={close.isPending} className="btn-ghost">
-          {close.isPending ? <Spinner /> : "Close session"}
+        <button onClick={endSession} disabled={close.isPending} className="btn-primary">
+          {close.isPending ? <Spinner /> : "End session"}
         </button>
       </header>
 
@@ -130,7 +133,10 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
       {roster.isLoading ? (
         <div className="grid h-24 place-items-center text-ink-soft/50"><Spinner /></div>
       ) : rows.length === 0 ? (
-        <Empty title={q ? "No match" : "Start typing a name"} sub={q ? "Try another spelling." : "Members appear as you type."} />
+        <Empty
+          title={q ? "No match" : "No members yet"}
+          sub={q ? "Try another spelling." : "Approve registrations first, then check members in here."}
+        />
       ) : (
         <ul className="space-y-2">
           {rows.map((r) => {
