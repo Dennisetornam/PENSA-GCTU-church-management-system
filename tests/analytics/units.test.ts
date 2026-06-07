@@ -94,6 +94,25 @@ describe("Module 7 — analytics", () => {
     expect(p?.attendances).toBe(2);
   });
 
+  it("personality tie-break: earliest check-in wins when attendance is equal", async () => {
+    await addMember(env, "1", { cell: "cell_dunamis" });
+    await addMember(env, "2", { cell: "cell_dunamis" });
+    const s = await createSession(env.DB as never, { gatheringTypeId: "gt_sunday", sessionDate: "2026-06-01" });
+    // both present once; member 2 checked in earlier
+    env.DB.__raw.exec(`INSERT INTO attendance_records (id, session_id, member_id, status, checked_in_at) VALUES ('a1','${s.id}','1','present','2026-06-01T09:30:00Z')`);
+    env.DB.__raw.exec(`INSERT INTO attendance_records (id, session_id, member_id, status, checked_in_at) VALUES ('a2','${s.id}','2','present','2026-06-01T08:00:00Z')`);
+    const p = await getPersonalityOfWeek(env.DB as never, NOW);
+    expect(p?.id).toBe("2");
+  });
+
+  it("personality ignores non-weekly gatherings (e.g. Outreach)", async () => {
+    await addMember(env, "1", { cell: "cell_dunamis" });
+    const s = await createSession(env.DB as never, { gatheringTypeId: "gt_outreach", sessionDate: "2026-06-02" });
+    env.DB.__raw.exec(`INSERT INTO attendance_records (id, session_id, member_id, status, checked_in_at) VALUES ('a1','${s.id}','1','present','2026-06-02T09:00:00Z')`);
+    const p = await getPersonalityOfWeek(env.DB as never, NOW);
+    expect(p).toBeNull();
+  });
+
   it("growth snapshot builds and reads idempotently", async () => {
     await addMember(env, "1", { status: "actual_member", hgb: 1, residence: "hostel_resident", approvedAt: "2026-06-04T09:00:00Z" });
     await addMember(env, "2", { status: "visitor", residence: "non_resident" });

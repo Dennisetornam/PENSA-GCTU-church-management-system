@@ -20,7 +20,8 @@ export function Registrations() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const approve = useMutation({
-    mutationFn: (id: string) => api.post(`/api/registrations/${id}/approve`, { membershipStatus: "visitor" }),
+    // No membershipStatus override → the member's own choice (from the form) is used.
+    mutationFn: (id: string) => api.post(`/api/registrations/${id}/approve`),
     onMutate: (id) => setBusyId(id),
     onSettled: () => { setBusyId(null); qc.invalidateQueries({ queryKey: ["registrations"] }); qc.invalidateQueries({ queryKey: ["summary"] }); qc.invalidateQueries({ queryKey: ["pending"] }); },
   });

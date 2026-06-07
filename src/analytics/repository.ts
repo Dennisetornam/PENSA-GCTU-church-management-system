@@ -121,21 +121,36 @@ export interface Personality {
   full_name: string;
   profile_picture_key: string | null;
   attendances: number;
+  first_check_in: string | null;
 }
 
-/** Personality of the Week — the member with the most attendances in the last 7 days. */
+// The weekly gatherings that count toward Personality of the Week:
+// Sunday Service, Midweek Service, and Adullam (Saturday).
+const WEEKLY_GATHERINGS = ["gt_sunday", "gt_midweek", "gt_adullam"];
+
+/**
+ * Personality of the Week — most attendances across the week's Sunday/Midweek/
+ * Adullam gatherings (last 7 days). Ties are broken by the EARLIEST check-in time.
+ */
 export async function getPersonalityOfWeek(db: D1Database, now: Date = new Date()): Promise<Personality | null> {
   const cutoff = daysAgo(now, 7);
+  const placeholders = WEEKLY_GATHERINGS.map(() => "?").join(",");
   const row = await db
     .prepare(
-      `SELECT m.id, m.member_code, m.full_name, m.profile_picture_key, count(*) AS attendances
+      `SELECT m.id, m.member_code, m.full_name, m.profile_picture_key,
+              count(*) AS attendances, min(ar.checked_in_at) AS first_check_in
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.session_id
        JOIN members m ON m.id = ar.member_id
-       WHERE ar.status IN ('present','late') AND s.session_date >= ? AND s.deleted_at IS NULL AND m.deleted_at IS NULL
-       GROUP BY m.id ORDER BY attendances DESC, m.last_name LIMIT 1`,
+       WHERE ar.status IN ('present','late')
+         AND s.session_date >= ?
+         AND s.gathering_type_id IN (${placeholders})
+         AND s.deleted_at IS NULL AND m.deleted_at IS NULL
+       GROUP BY m.id
+       ORDER BY attendances DESC, first_check_in ASC
+       LIMIT 1`,
     )
-    .bind(cutoff)
+    .bind(cutoff, ...WEEKLY_GATHERINGS)
     .first<Personality>();
   return row ?? null;
 }
