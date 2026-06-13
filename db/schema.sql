@@ -422,12 +422,17 @@ CREATE TABLE finance_entries (
     payment_method  TEXT CHECK (payment_method IN ('cash','momo','bank','card','cheque')),
     occurred_on     TEXT NOT NULL,
     recorded_by     TEXT REFERENCES users(id) ON DELETE SET NULL,
+    -- tithes & pledges are attributed to a member; pledges track redemption
+    member_id       TEXT REFERENCES members(id) ON DELETE SET NULL,
+    member_name     TEXT,
+    pledge_status   TEXT CHECK (pledge_status IN ('fully_redeemed','partly_redeemed')),
     notes           TEXT,
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     deleted_at      TEXT
 );
 CREATE INDEX ix_finance_date     ON finance_entries(occurred_on) WHERE deleted_at IS NULL;
 CREATE INDEX ix_finance_category ON finance_entries(category)    WHERE deleted_at IS NULL;
+CREATE INDEX ix_finance_member   ON finance_entries(member_id)   WHERE deleted_at IS NULL;
 
 -- =============================================================================
 -- SECTION 8 — TRIGGERS (updated_at + row_version maintenance)

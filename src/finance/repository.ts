@@ -2,6 +2,7 @@
 
 export const CATEGORIES = ["offering_cash", "offering_momo", "tithe", "pledge", "fundraising", "free_will"] as const;
 export const METHODS = ["cash", "momo", "bank", "card", "cheque"] as const;
+export const PLEDGE_STATUSES = ["fully_redeemed", "partly_redeemed"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export interface NewEntry {
@@ -12,6 +13,9 @@ export interface NewEntry {
   paymentMethod?: string | null;
   occurredOn: string;
   recordedBy: string | null;
+  memberId?: string | null;
+  memberName?: string | null;
+  pledgeStatus?: string | null;
   notes?: string | null;
 }
 
@@ -19,10 +23,10 @@ export async function createEntry(db: D1Database, e: NewEntry): Promise<{ id: st
   const id = crypto.randomUUID();
   await db
     .prepare(
-      `INSERT INTO finance_entries (id, category, amount_minor, currency, service_type_id, payment_method, occurred_on, recorded_by, notes, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?, datetime('now'))`,
+      `INSERT INTO finance_entries (id, category, amount_minor, currency, service_type_id, payment_method, occurred_on, recorded_by, member_id, member_name, pledge_status, notes, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))`,
     )
-    .bind(id, e.category, e.amountMinor, e.currency, e.serviceTypeId ?? null, e.paymentMethod ?? null, e.occurredOn, e.recordedBy, e.notes ?? null)
+    .bind(id, e.category, e.amountMinor, e.currency, e.serviceTypeId ?? null, e.paymentMethod ?? null, e.occurredOn, e.recordedBy, e.memberId ?? null, e.memberName ?? null, e.pledgeStatus ?? null, e.notes ?? null)
     .run();
   return { id };
 }
@@ -49,6 +53,7 @@ export async function listEntries(db: D1Database, p: ListParams) {
   const { results } = await db
     .prepare(
       `SELECT f.id, f.category, f.amount_minor, f.currency, f.payment_method, f.occurred_on, f.notes,
+              f.member_name, f.pledge_status,
               gt.name AS service_name, u.full_name AS recorded_by_name
        FROM finance_entries f
        LEFT JOIN gathering_types gt ON gt.id = f.service_type_id

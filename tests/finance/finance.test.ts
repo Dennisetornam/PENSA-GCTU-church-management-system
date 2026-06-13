@@ -32,7 +32,7 @@ describe("Module 7b — finance", () => {
   it("records giving and totals by category", async () => {
     expect((await rec({ category: "offering_cash", amount: 150.5, paymentMethod: "cash", serviceTypeId: "gt_sunday", occurredOn: "2026-06-07" })).status).toBe(201);
     await rec({ category: "offering_momo", amount: 80, paymentMethod: "momo", serviceTypeId: "gt_sunday", occurredOn: "2026-06-07" });
-    await rec({ category: "tithe", amount: 200, paymentMethod: "bank", serviceTypeId: "gt_sunday", occurredOn: "2026-06-07" });
+    await rec({ category: "tithe", amount: 200, paymentMethod: "bank", serviceTypeId: "gt_sunday", memberName: "Ama Owusu", occurredOn: "2026-06-07" });
 
     // stored as minor units
     const row = env.DB.__raw.prepare("SELECT amount_minor, currency, recorded_by FROM finance_entries WHERE category='offering_cash'").get() as { amount_minor: number; currency: string; recorded_by: string };
@@ -41,20 +41,50 @@ describe("Module 7b — finance", () => {
     expect(row.recorded_by).toBe("u-sa");
 
     const sum = await (await app.fetch(new Request("https://x/api/finance/summary", { headers: auth(token) }), env as never)).json() as { byCategory: Record<string, { total_minor: number }>; totalMinor: number };
-    expect(sum.byCategory.offering_cash.total_minor).toBe(15050);
-    expect(sum.byCategory.tithe.total_minor).toBe(20000);
+    expect(sum.byCategory.offering_cash?.total_minor).toBe(15050);
+    expect(sum.byCategory.tithe?.total_minor).toBe(20000);
     expect(sum.totalMinor).toBe(15050 + 8000 + 20000);
   });
 
   it("lists entries with recorder + service name", async () => {
-    await rec({ category: "pledge", amount: 500, paymentMethod: "cash", serviceTypeId: "gt_adullam", occurredOn: "2026-06-06" });
-    const list = await (await app.fetch(new Request("https://x/api/finance", { headers: auth(token) }), env as never)).json() as { results: { category: string; service_name: string; recorded_by_name: string }[] };
-    expect(list.results[0].category).toBe("pledge");
-    expect(list.results[0].service_name).toBe("Adullam");
-    expect(list.results[0].recorded_by_name).toBe("Treasurer");
+    await rec({ category: "pledge", amount: 500, paymentMethod: "cash", serviceTypeId: "gt_adullam", memberName: "Yaw Boateng", pledgeStatus: "fully_redeemed", occurredOn: "2026-06-06" });
+    const list = await (await app.fetch(new Request("https://x/api/finance", { headers: auth(token) }), env as never)).json() as { results: { category: string; service_name: string; recorded_by_name: string; member_name: string; pledge_status: string }[] };
+    expect(list.results[0]?.category).toBe("pledge");
+    expect(list.results[0]?.service_name).toBe("Adullam");
+    expect(list.results[0]?.recorded_by_name).toBe("Treasurer");
+    expect(list.results[0]?.member_name).toBe("Yaw Boateng");
+    expect(list.results[0]?.pledge_status).toBe("fully_redeemed");
   });
 
   it("rejects invalid amount", async () => {
-    expect((await rec({ category: "tithe", amount: -5, occurredOn: "2026-06-07" })).status).toBe(400);
+    expect((await rec({ category: "tithe", amount: -5, memberName: "Ama", occurredOn: "2026-06-07" })).status).toBe(400);
+  });
+
+  it("requires a member name for tithes and pledges", async () => {
+    expect((await rec({ category: "tithe", amount: 50, occurredOn: "2026-06-07" })).status).toBe(400);
+    expect((await rec({ category: "pledge", amount: 50, occurredOn: "2026-06-07" })).status).toBe(400);
+  });
+
+  it("requires pledge redemption status, and stores member + status", async () => {
+    // pledge without status -> 400
+    expect((await rec({ category: "pledge", amount: 100, memberName: "Kofi", occurredOn: "2026-06-07" })).status).toBe(400);
+    // valid pledge
+    expect((await rec({ category: "pledge", amount: 100, memberName: "Kofi Mensah", pledgeStatus: "partly_redeemed", occurredOn: "2026-06-07" })).status).toBe(201);
+    expect((await rec({ category: "tithe", amount: 40, memberName: "Ama Owusu", occurredOn: "2026-06-07" })).status).toBe(201);
+
+    const pledge = env.DB.__raw.prepare("SELECT member_name, pledge_status FROM finance_entries WHERE category='pledge'").get() as { member_name: string; pledge_status: string };
+    expect(pledge.member_name).toBe("Kofi Mensah");
+    expect(pledge.pledge_status).toBe("partly_redeemed");
+
+    const tithe = env.DB.__raw.prepare("SELECT member_name, pledge_status FROM finance_entries WHERE category='tithe'").get() as { member_name: string; pledge_status: string | null };
+    expect(tithe.member_name).toBe("Ama Owusu");
+    expect(tithe.pledge_status).toBeNull();
+  });
+
+  it("does not attach member/pledge fields to plain offerings", async () => {
+    await rec({ category: "offering_cash", amount: 30, memberName: "Should Ignore", pledgeStatus: "fully_redeemed", occurredOn: "2026-06-07" });
+    const row = env.DB.__raw.prepare("SELECT member_name, pledge_status FROM finance_entries WHERE category='offering_cash'").get() as { member_name: string | null; pledge_status: string | null };
+    expect(row.member_name).toBeNull();
+    expect(row.pledge_status).toBeNull();
   });
 });

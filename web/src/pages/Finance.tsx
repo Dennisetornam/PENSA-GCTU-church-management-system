@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus } from "lucide-react";
+import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check } from "lucide-react";
 import { api } from "../api";
 import { Spinner, Empty } from "../ui";
 
@@ -14,12 +14,19 @@ const CATS = [
 ] as const;
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATS.map((c) => [c.key, c.label]));
 const METHODS = ["cash", "momo", "bank", "card", "cheque"];
+const PLEDGE_STATUS: { key: string; label: string }[] = [
+  { key: "fully_redeemed", label: "Fully redeemed" },
+  { key: "partly_redeemed", label: "Partly redeemed" },
+];
+const pledgeLabel = (s: string | null) => PLEDGE_STATUS.find((p) => p.key === s)?.label ?? "";
+const needsMember = (cat: string) => cat === "tithe" || cat === "pledge";
 const today = () => new Date().toISOString().slice(0, 10);
 const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 interface Options { gatheringTypes: { id: string; name: string }[]; }
 interface Summary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; }
-interface Entry { id: string; category: string; amount_minor: number; payment_method: string | null; occurred_on: string; service_name: string | null; recorded_by_name: string | null; }
+interface Entry { id: string; category: string; amount_minor: number; payment_method: string | null; occurred_on: string; service_name: string | null; recorded_by_name: string | null; member_name: string | null; pledge_status: string | null; }
+interface MemberRow { id: string; full_name: string; member_code: string | null; }
 
 export function Finance() {
   const qc = useQueryClient();
@@ -71,13 +78,17 @@ export function Finance() {
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-ink/10 text-left text-ink-soft/65">
-              {["Date", "Category", "Amount", "Service", "Method", "Recorded by"].map((h) => <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>)}
+              {["Date", "Category", "Member", "Amount", "Service", "Method", "Recorded by"].map((h) => <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>)}
             </tr></thead>
             <tbody>
               {(list?.results ?? []).map((e) => (
                 <tr key={e.id} className="border-b border-ink/[0.05] last:border-0 hover:bg-ink/[0.02]">
                   <td className="whitespace-nowrap px-4 py-2.5 text-ink">{e.occurred_on}</td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-ink">{CAT_LABEL[e.category] ?? e.category}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/85">
+                    {e.member_name ?? "—"}
+                    {e.pledge_status && <span className="ml-2 rounded-full bg-gold/12 px-2 py-0.5 text-[0.65rem] font-semibold text-gold">{pledgeLabel(e.pledge_status)}</span>}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-2.5 font-medium text-ink">{cedis(e.amount_minor)}</td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/75">{e.service_name ?? "—"}</td>
                   <td className="whitespace-nowrap px-4 py-2.5 capitalize text-ink-soft/75">{e.payment_method ?? "—"}</td>
@@ -95,23 +106,49 @@ export function Finance() {
 }
 
 function RecordModal({ o, onClose, onDone }: { o: Options; onClose: () => void; onDone: () => void }) {
-  const [f, setF] = useState({ category: "offering_cash", amount: "", serviceTypeId: "", paymentMethod: "cash", occurredOn: today(), notes: "" });
+  const [f, setF] = useState({ category: "offering_cash", amount: "", serviceTypeId: "", paymentMethod: "cash", occurredOn: today(), memberId: "", memberName: "", pledgeStatus: "", notes: "" });
   const [err, setErr] = useState<string | null>(null);
   const set = (p: Partial<typeof f>) => setF((s) => ({ ...s, ...p }));
   const m = useMutation({
-    mutationFn: () => api.post("/api/finance", { ...f, amount: Number(f.amount), serviceTypeId: f.serviceTypeId || null }),
+    mutationFn: () => api.post("/api/finance", {
+      ...f,
+      amount: Number(f.amount),
+      serviceTypeId: f.serviceTypeId || null,
+      memberId: f.memberId || null,
+      memberName: needsMember(f.category) ? f.memberName.trim() || null : null,
+      pledgeStatus: f.category === "pledge" ? f.pledgeStatus || null : null,
+    }),
     onSuccess: onDone,
     onError: (e: Error) => setErr(e.message),
   });
-  const amountOk = Number(f.amount) > 0;
+  const memberOk = !needsMember(f.category) || f.memberName.trim().length > 1;
+  const pledgeOk = f.category !== "pledge" || !!f.pledgeStatus;
+  const amountOk = Number(f.amount) > 0 && memberOk && pledgeOk;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-vespers-deep/40 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="card max-h-[90vh] w-full max-w-md overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
         <h3 className="mb-4 font-display text-2xl text-ink">Record giving</h3>
         <div className="space-y-3">
           <div><label className="label">Category</label>
-            <select className="field" value={f.category} onChange={(e) => set({ category: e.target.value })}>{CATS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</select>
+            <select className="field" value={f.category} onChange={(e) => set({ category: e.target.value, memberId: "", memberName: "", pledgeStatus: "" })}>{CATS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</select>
           </div>
+
+          {needsMember(f.category) && (
+            <MemberField value={f.memberName} onPick={(name, id) => set({ memberName: name, memberId: id ?? "" })} />
+          )}
+          {f.category === "pledge" && (
+            <div><label className="label">Pledge redemption</label>
+              <div className="grid grid-cols-2 gap-2">
+                {PLEDGE_STATUS.map((p) => (
+                  <button key={p.key} type="button" onClick={() => set({ pledgeStatus: p.key })}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${f.pledgeStatus === p.key ? "border-gold bg-gold/12 text-gold" : "border-ink/15 text-ink-soft/75 hover:border-ink/30"}`}>
+                    {f.pledgeStatus === p.key && <Check size={14} />}{p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div><label className="label">Amount (GH₵)</label>
             <input type="number" inputMode="decimal" min="0" step="0.01" className="field" value={f.amount} onChange={(e) => set({ amount: e.target.value })} placeholder="0.00" />
           </div>
@@ -132,6 +169,45 @@ function RecordModal({ o, onClose, onDone }: { o: Options; onClose: () => void; 
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Type-ahead member picker. Free-typed names are allowed (non-members); picking
+// a result also attributes the entry to that member record.
+function MemberField({ value, onPick }: { value: string; onPick: (name: string, id?: string) => void }) {
+  const [q, setQ] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [dq, setDq] = useState("");
+  useEffect(() => { const t = setTimeout(() => setDq(q.trim()), 200); return () => clearTimeout(t); }, [q]);
+  const { data } = useQuery({
+    queryKey: ["finance-member-search", dq],
+    queryFn: () => api.get<{ results: MemberRow[] }>(`/api/members?q=${encodeURIComponent(dq)}&limit=8`),
+    enabled: open && dq.length >= 2,
+  });
+  const rows = data?.results ?? [];
+  return (
+    <div className="relative">
+      <label className="label">Member name</label>
+      <input
+        className="field" value={q} placeholder="Type a name…" autoComplete="off"
+        onChange={(e) => { setQ(e.target.value); onPick(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+      />
+      {open && dq.length >= 2 && rows.length > 0 && (
+        <ul className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-ink/12 bg-ivory shadow-soft">
+          {rows.map((r) => (
+            <li key={r.id}>
+              <button type="button" className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm hover:bg-ink/[0.04]"
+                onMouseDown={(e) => { e.preventDefault(); setQ(r.full_name); onPick(r.full_name, r.id); setOpen(false); }}>
+                <span className="text-ink">{r.full_name}</span>
+                {r.member_code && <span className="text-xs text-ink-soft/55">{r.member_code}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

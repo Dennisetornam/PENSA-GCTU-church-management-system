@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
-import { createEntry, listEntries, summary, CATEGORIES, METHODS } from "./repository";
+import { createEntry, listEntries, summary, CATEGORIES, METHODS, PLEDGE_STATUSES } from "./repository";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -13,15 +13,28 @@ app.onError((err, c) => {
   return c.json({ error: "internal_error" }, 500);
 });
 
-const createSchema = z.object({
-  category: z.enum(CATEGORIES),
-  amount: z.number().positive().max(100_000_000), // GHS
-  currency: z.string().length(3).optional(),
-  serviceTypeId: z.string().optional().nullable(),
-  paymentMethod: z.enum(METHODS).optional().nullable(),
-  occurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  notes: z.string().max(500).optional().nullable(),
-});
+const createSchema = z
+  .object({
+    category: z.enum(CATEGORIES),
+    amount: z.number().positive().max(100_000_000), // GHS
+    currency: z.string().length(3).optional(),
+    serviceTypeId: z.string().optional().nullable(),
+    paymentMethod: z.enum(METHODS).optional().nullable(),
+    occurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    memberId: z.string().optional().nullable(),
+    memberName: z.string().trim().max(120).optional().nullable(),
+    pledgeStatus: z.enum(PLEDGE_STATUSES).optional().nullable(),
+    notes: z.string().max(500).optional().nullable(),
+  })
+  // tithes & pledges must name the giver; pledges must state redemption
+  .superRefine((v, ctx) => {
+    if ((v.category === "tithe" || v.category === "pledge") && !v.memberName) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["memberName"], message: "Member name is required for tithes and pledges" });
+    }
+    if (v.category === "pledge" && !v.pledgeStatus) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pledgeStatus"], message: "Pledge redemption status is required" });
+    }
+  });
 
 app.post("/", authorize("finance:manage"), async (c) => {
   const b = createSchema.parse(await c.req.json());
@@ -33,6 +46,10 @@ app.post("/", authorize("finance:manage"), async (c) => {
     paymentMethod: b.paymentMethod ?? null,
     occurredOn: b.occurredOn,
     recordedBy: c.get("userId"),
+    memberId: b.memberId ?? null,
+    // only carry giver attribution for member-linked categories
+    memberName: b.category === "tithe" || b.category === "pledge" ? b.memberName ?? null : null,
+    pledgeStatus: b.category === "pledge" ? b.pledgeStatus ?? null : null,
     notes: b.notes ?? null,
   });
   await c.env.DB.prepare(
