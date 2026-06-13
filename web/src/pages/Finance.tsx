@@ -23,7 +23,8 @@ const needsMember = (cat: string) => cat === "tithe" || cat === "pledge";
 const today = () => new Date().toISOString().slice(0, 10);
 const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-interface Options { gatheringTypes: { id: string; name: string }[]; }
+export interface Options { gatheringTypes: { id: string; name: string }[]; }
+export interface FinancePreset { serviceTypeId?: string; occurredOn?: string; sessionId?: string; sessionLabel?: string; }
 interface Summary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; }
 interface Entry { id: string; category: string; amount_minor: number; payment_method: string | null; occurred_on: string; service_name: string | null; recorded_by_name: string | null; member_name: string | null; pledge_status: string | null; }
 interface MemberRow { id: string; full_name: string; member_code: string | null; }
@@ -105,8 +106,9 @@ export function Finance() {
   );
 }
 
-function RecordModal({ o, onClose, onDone }: { o: Options; onClose: () => void; onDone: () => void }) {
-  const [f, setF] = useState({ category: "offering_cash", amount: "", serviceTypeId: "", paymentMethod: "cash", occurredOn: today(), memberId: "", memberName: "", pledgeStatus: "", notes: "" });
+export function RecordModal({ o, onClose, onDone, preset }: { o: Options; onClose: () => void; onDone: () => void; preset?: FinancePreset }) {
+  const sessionBound = !!preset?.sessionId;
+  const [f, setF] = useState({ category: "offering_cash", amount: "", serviceTypeId: preset?.serviceTypeId ?? "", paymentMethod: "cash", occurredOn: preset?.occurredOn ?? today(), memberId: "", memberName: "", pledgeStatus: "", notes: "", sessionId: preset?.sessionId ?? "" });
   const [err, setErr] = useState<string | null>(null);
   const set = (p: Partial<typeof f>) => setF((s) => ({ ...s, ...p }));
   const m = useMutation({
@@ -114,6 +116,7 @@ function RecordModal({ o, onClose, onDone }: { o: Options; onClose: () => void; 
       ...f,
       amount: Number(f.amount),
       serviceTypeId: f.serviceTypeId || null,
+      sessionId: f.sessionId || null,
       memberId: f.memberId || null,
       memberName: needsMember(f.category) ? f.memberName.trim() || null : null,
       pledgeStatus: f.category === "pledge" ? f.pledgeStatus || null : null,
@@ -127,7 +130,9 @@ function RecordModal({ o, onClose, onDone }: { o: Options; onClose: () => void; 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-vespers-deep/40 p-4 backdrop-blur-sm" onClick={onClose}>
       <div className="card max-h-[90vh] w-full max-w-md overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-4 font-display text-2xl text-ink">Record giving</h3>
+        <h3 className="mb-1 font-display text-2xl text-ink">Record giving</h3>
+        {sessionBound && <p className="mb-4 text-sm text-ink-soft/65">For <span className="font-medium text-gold">{preset?.sessionLabel}</span></p>}
+        {!sessionBound && <div className="mb-4" />}
         <div className="space-y-3">
           <div><label className="label">Category</label>
             <select className="field" value={f.category} onChange={(e) => set({ category: e.target.value, memberId: "", memberName: "", pledgeStatus: "" })}>{CATS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</select>
@@ -154,7 +159,11 @@ function RecordModal({ o, onClose, onDone }: { o: Options; onClose: () => void; 
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className="label">Service type</label>
-              <select className="field" value={f.serviceTypeId} onChange={(e) => set({ serviceTypeId: e.target.value })}><option value="">—</option>{o.gatheringTypes.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select>
+              {sessionBound ? (
+                <div className="field flex items-center bg-ink/[0.04] text-ink-soft/80">{preset?.sessionLabel?.split(" · ")[0] ?? "Session"}</div>
+              ) : (
+                <select className="field" value={f.serviceTypeId} onChange={(e) => set({ serviceTypeId: e.target.value })}><option value="">—</option>{o.gatheringTypes.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select>
+              )}
             </div>
             <div><label className="label">Payment method</label>
               <select className="field capitalize" value={f.paymentMethod} onChange={(e) => set({ paymentMethod: e.target.value })}>{METHODS.map((x) => <option key={x} value={x}>{x}</option>)}</select>

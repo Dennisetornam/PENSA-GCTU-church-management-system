@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock } from "lucide-react";
+import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock, Wallet } from "lucide-react";
 import { api } from "../api";
 import { Spinner, Badge, Empty, Avatar } from "../ui";
+import { RecordModal, type Options as FinanceOptions } from "./Finance";
 
 interface Options { gatheringTypes: { id: string; name: string }[]; }
 interface Session { id: string; gathering_name: string; title: string | null; session_date: string; status: string; present: number | null; attended: number | null; }
@@ -92,9 +93,14 @@ function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
 function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [giving, setGiving] = useState(false);
   const dq = useDebounced(q);
-  const session = useQuery({ queryKey: ["session", sessionId], queryFn: () => api.get<{ gathering_name: string; session_date: string; status: string; summary: unknown }>(`/api/attendance/sessions/${sessionId}`) });
+  const session = useQuery({ queryKey: ["session", sessionId], queryFn: () => api.get<{ gathering_type_id: string; session_date: string; status: string; summary: unknown }>(`/api/attendance/sessions/${sessionId}`) });
+  const options = useQuery({ queryKey: ["options"], queryFn: () => api.get<FinanceOptions>("/register/options") });
   const roster = useQuery({ queryKey: ["roster", sessionId, dq], queryFn: () => api.get<{ results: RosterRow[] }>(`/api/attendance/sessions/${sessionId}/roster?q=${encodeURIComponent(dq)}&limit=40`) });
+
+  const gatheringName = (options.data?.gatheringTypes ?? []).find((g) => g.id === session.data?.gathering_type_id)?.name ?? "Session";
+  const open = session.data?.status === "open";
 
   const mark = useMutation({
     mutationFn: (memberId: string) => api.put(`/api/attendance/sessions/${sessionId}/records`, { marks: [{ memberId, status: "present" }] }),
@@ -116,13 +122,32 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
       <button onClick={onBack} className="mb-4 text-sm text-ink-soft/60 hover:text-ink">← All sessions</button>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="eyebrow mb-1.5">{session.data?.gathering_name ?? "Session"} · {session.data?.session_date}</div>
+          <div className="eyebrow mb-1.5">{gatheringName} · {session.data?.session_date}</div>
           <h1 className="font-display text-3xl font-semibold text-ink">Check members in</h1>
         </div>
-        <button onClick={endSession} disabled={close.isPending} className="btn-primary">
-          {close.isPending ? <Spinner /> : "End session"}
-        </button>
+        <div className="flex gap-2">
+          {open && (
+            <button onClick={() => setGiving(true)} className="btn-gold"><Wallet size={16} /> Record giving</button>
+          )}
+          <button onClick={endSession} disabled={close.isPending} className="btn-primary">
+            {close.isPending ? <Spinner /> : "End session"}
+          </button>
+        </div>
       </header>
+
+      {giving && options.data && session.data && (
+        <RecordModal
+          o={options.data}
+          preset={{
+            serviceTypeId: session.data.gathering_type_id,
+            occurredOn: session.data.session_date,
+            sessionId,
+            sessionLabel: `${gatheringName} · ${session.data.session_date}`,
+          }}
+          onClose={() => setGiving(false)}
+          onDone={() => setGiving(false)}
+        />
+      )}
 
       <div className="card sticky top-20 z-10 mb-4 flex items-center gap-3 p-2.5">
         <Search size={18} className="ml-2 text-ink-soft/45" />

@@ -16,6 +16,7 @@ export interface NewEntry {
   memberId?: string | null;
   memberName?: string | null;
   pledgeStatus?: string | null;
+  sessionId?: string | null;
   notes?: string | null;
 }
 
@@ -23,10 +24,10 @@ export async function createEntry(db: D1Database, e: NewEntry): Promise<{ id: st
   const id = crypto.randomUUID();
   await db
     .prepare(
-      `INSERT INTO finance_entries (id, category, amount_minor, currency, service_type_id, payment_method, occurred_on, recorded_by, member_id, member_name, pledge_status, notes, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))`,
+      `INSERT INTO finance_entries (id, category, amount_minor, currency, service_type_id, payment_method, occurred_on, recorded_by, member_id, member_name, pledge_status, session_id, notes, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))`,
     )
-    .bind(id, e.category, e.amountMinor, e.currency, e.serviceTypeId ?? null, e.paymentMethod ?? null, e.occurredOn, e.recordedBy, e.memberId ?? null, e.memberName ?? null, e.pledgeStatus ?? null, e.notes ?? null)
+    .bind(id, e.category, e.amountMinor, e.currency, e.serviceTypeId ?? null, e.paymentMethod ?? null, e.occurredOn, e.recordedBy, e.memberId ?? null, e.memberName ?? null, e.pledgeStatus ?? null, e.sessionId ?? null, e.notes ?? null)
     .run();
   return { id };
 }
@@ -36,6 +37,7 @@ export interface ListParams {
   from?: string;
   to?: string;
   serviceTypeId?: string;
+  sessionId?: string;
   page?: number;
   limit?: number;
 }
@@ -47,6 +49,7 @@ export async function listEntries(db: D1Database, p: ListParams) {
   const args: unknown[] = [];
   if (p.category) { where.push("f.category = ?"); args.push(p.category); }
   if (p.serviceTypeId) { where.push("f.service_type_id = ?"); args.push(p.serviceTypeId); }
+  if (p.sessionId) { where.push("f.session_id = ?"); args.push(p.sessionId); }
   if (p.from) { where.push("f.occurred_on >= ?"); args.push(p.from); }
   if (p.to) { where.push("f.occurred_on <= ?"); args.push(p.to); }
 

@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
-import { Crown, Flame, Droplets } from "lucide-react";
+import { Crown, Flame, Droplets, Wallet } from "lucide-react";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import { Avatar, Spinner, Badge } from "../ui";
 
 interface Summary { total: number; actualMembers: number; visitors: number; associates: number; alumni: number; active90d: number; }
@@ -9,18 +10,30 @@ interface Dist { results: { id: string; name: string; count: number }[]; }
 interface Baptism { total: number; holyGhost: number; water: number; holyGhostPct: number; waterPct: number; }
 interface Trend { results: { session_date: string; gathering: string; attended: number }[]; }
 interface Personality { member: { id: string; full_name: string; member_code: string | null; attendances: number } | null; }
+interface FinanceSummary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; }
 
 const PALETTE = ["#C39A4A", "#6E7A63", "#BC6A45", "#2A2247"];
+const FIN_CATS: { key: string; label: string }[] = [
+  { key: "offering_cash", label: "Offering · Cash" }, { key: "offering_momo", label: "Offering · Momo" },
+  { key: "tithe", label: "Tithes" }, { key: "pledge", label: "Pledges" },
+  { key: "fundraising", label: "Fundraising" }, { key: "free_will", label: "Free Will" },
+];
+const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function Analytics() {
+  const { me } = useAuth();
+  const canFinance = me?.role === "super_admin" || me?.role === "church_admin";
   const summary = useQuery({ queryKey: ["a-summary"], queryFn: () => api.get<Summary>("/api/analytics/summary") });
   const cells = useQuery({ queryKey: ["a-cell"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=cell") });
   const depts = useQuery({ queryKey: ["a-dept"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=department") });
   const baptism = useQuery({ queryKey: ["a-baptism"], queryFn: () => api.get<Baptism>("/api/analytics/baptism") });
   const trend = useQuery({ queryKey: ["a-trend"], queryFn: () => api.get<Trend>("/api/analytics/attendance-trend?limit=12") });
   const personality = useQuery({ queryKey: ["a-personality"], queryFn: () => api.get<Personality>("/api/analytics/personality") });
+  const finance = useQuery({ queryKey: ["a-finance"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance });
 
   const p = personality.data?.member;
+  const fin = finance.data;
+  const finMax = Math.max(1, ...FIN_CATS.map((c) => fin?.byCategory[c.key]?.total_minor ?? 0));
   const trendData = (trend.data?.results ?? []).slice().reverse().map((r) => ({ date: r.session_date.slice(5), attended: r.attended }));
 
   return (
@@ -69,6 +82,35 @@ export function Analytics() {
           </div>
         ))}
       </div>
+
+      {/* Finance performance */}
+      {canFinance && (
+        <div className="card mb-5 p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 font-display text-xl text-ink"><Wallet size={18} className="text-gold" /> Finance performance</h3>
+            <div className="text-right">
+              <div className="text-[0.65rem] font-semibold uppercase tracking-widest text-ink-soft/55">Total received</div>
+              <div className="font-display text-2xl font-semibold text-ink">{finance.isLoading ? <Spinner /> : cedis(fin?.totalMinor ?? 0)}</div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {FIN_CATS.map((c) => {
+              const v = fin?.byCategory[c.key]?.total_minor ?? 0;
+              return (
+                <div key={c.key}>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="font-medium text-ink">{c.label}</span>
+                    <span className="tabular-nums text-ink-soft/70">{cedis(v)}</span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-ink/[0.07]">
+                    <div className="h-full rounded-full bg-gold transition-all" style={{ width: `${(v / finMax) * 100}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Attendance trend */}

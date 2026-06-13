@@ -81,6 +81,17 @@ describe("Module 7b — finance", () => {
     expect(tithe.pledge_status).toBeNull();
   });
 
+  it("links giving to the attendance session it was collected during", async () => {
+    await env.DB.prepare("INSERT INTO attendance_sessions (id, gathering_type_id, title, session_date, status, recorded_by, created_at, updated_at) VALUES ('sess-1','gt_sunday','Sun','2026-06-07','open','u-sa', datetime('now'), datetime('now'))").run();
+    expect((await rec({ category: "offering_cash", amount: 75, serviceTypeId: "gt_sunday", sessionId: "sess-1", occurredOn: "2026-06-07" })).status).toBe(201);
+
+    const row = env.DB.__raw.prepare("SELECT session_id FROM finance_entries WHERE category='offering_cash'").get() as { session_id: string };
+    expect(row.session_id).toBe("sess-1");
+
+    const list = await (await app.fetch(new Request("https://x/api/finance?sessionId=sess-1", { headers: auth(token) }), env as never)).json() as { results: unknown[] };
+    expect(list.results.length).toBe(1);
+  });
+
   it("does not attach member/pledge fields to plain offerings", async () => {
     await rec({ category: "offering_cash", amount: 30, memberName: "Should Ignore", pledgeStatus: "fully_redeemed", occurredOn: "2026-06-07" });
     const row = env.DB.__raw.prepare("SELECT member_name, pledge_status FROM finance_entries WHERE category='offering_cash'").get() as { member_name: string | null; pledge_status: string | null };

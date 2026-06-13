@@ -1,22 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { Users, UserCheck, Sparkles, ArrowUpRight, Droplets, Flame } from "lucide-react";
+import { Users, UserCheck, Sparkles, ArrowUpRight, Droplets, Flame, Wallet } from "lucide-react";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import { StatCard, Spinner, Badge } from "../ui";
 
 interface Summary { total: number; actualMembers: number; visitors: number; associates: number; alumni: number; active90d: number; holyGhostBaptized: number; waterBaptized: number; }
 interface Dist { results: { id: string; name: string; count: number }[]; }
 interface Baptism { total: number; holyGhost: number; water: number; holyGhostPct: number; waterPct: number; }
 interface Regs { results: { id: string }[]; }
+interface FinanceSummary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; }
 
 const DONUT = ["#C39A4A", "#6E7A63", "#BC6A45", "#2A2247"];
+const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function Overview() {
+  const { me } = useAuth();
+  const canFinance = me?.role === "super_admin" || me?.role === "church_admin";
   const summary = useQuery({ queryKey: ["summary"], queryFn: () => api.get<Summary>("/api/analytics/summary") });
   const cells = useQuery({ queryKey: ["dist-cell"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=cell") });
   const baptism = useQuery({ queryKey: ["baptism"], queryFn: () => api.get<Baptism>("/api/analytics/baptism") });
   const pending = useQuery({ queryKey: ["pending"], queryFn: () => api.get<Regs>("/api/registrations?status=pending") });
+  const coffers = useQuery({ queryKey: ["coffers"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance });
 
   const s = summary.data;
   const hour = new Date().getHours();
@@ -47,6 +53,18 @@ export function Overview() {
             <StatCard label="Visitors" value={s?.visitors ?? 0} hint="becoming family" icon={<Sparkles size={20} />} />
             <StatCard label="Pending approval" value={pending.data?.results.length ?? 0} accent icon={<ArrowUpRight size={20} />} />
           </div>
+
+          {canFinance && (
+            <Link to="/dashboard/finance" className="card candlelight relative mt-5 flex items-center gap-5 overflow-hidden bg-vespers p-6 text-ivory-soft transition hover:shadow-lift">
+              <div className="candlelight absolute inset-0 opacity-60" />
+              <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gold/15 text-gold-soft"><Wallet size={22} /></span>
+              <div className="relative">
+                <div className="eyebrow !text-gold-soft">In the church coffers</div>
+                <div className="mt-0.5 font-display text-4xl font-semibold text-ivory-soft">{coffers.isLoading ? <Spinner /> : cedis(coffers.data?.totalMinor ?? 0)}</div>
+              </div>
+              <ArrowUpRight size={20} className="relative ml-auto text-ivory-soft/50" />
+            </Link>
+          )}
 
           <div className="mt-5 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
             {/* Cell distribution */}

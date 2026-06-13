@@ -24,6 +24,7 @@ const createSchema = z
     memberId: z.string().optional().nullable(),
     memberName: z.string().trim().max(120).optional().nullable(),
     pledgeStatus: z.enum(PLEDGE_STATUSES).optional().nullable(),
+    sessionId: z.string().optional().nullable(),
     notes: z.string().max(500).optional().nullable(),
   })
   // tithes & pledges must name the giver; pledges must state redemption
@@ -50,6 +51,7 @@ app.post("/", authorize("finance:manage"), async (c) => {
     // only carry giver attribution for member-linked categories
     memberName: b.category === "tithe" || b.category === "pledge" ? b.memberName ?? null : null,
     pledgeStatus: b.category === "pledge" ? b.pledgeStatus ?? null : null,
+    sessionId: b.sessionId ?? null,
     notes: b.notes ?? null,
   });
   await c.env.DB.prepare(
@@ -65,6 +67,7 @@ app.get("/", authorize("finance:view"), async (c) =>
     from: c.req.query("from"),
     to: c.req.query("to"),
     serviceTypeId: c.req.query("serviceTypeId"),
+    sessionId: c.req.query("sessionId"),
     page: Number(c.req.query("page") ?? "1"),
     limit: Number(c.req.query("limit") ?? "50"),
   })),
