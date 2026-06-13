@@ -11,7 +11,7 @@ import { MemberProfile } from "./pages/MemberProfile";
 import { Attendance } from "./pages/Attendance";
 import { Analytics } from "./pages/Analytics";
 import { Reports } from "./pages/Reports";
-import { Departments, Cells } from "./pages/Groups";
+import { Departments, Cells, CellMembers, DepartmentMembers } from "./pages/Groups";
 import { Register } from "./pages/Register";
 
 function Splash() {
@@ -42,7 +42,9 @@ export function App() {
         <Route path="members/:id" element={<MemberProfile />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="departments" element={<Departments />} />
+        <Route path="departments/:id" element={<DepartmentMembers />} />
         <Route path="cells" element={<Cells />} />
+        <Route path="cells/:id" element={<CellMembers />} />
         <Route path="reports" element={<Reports />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
