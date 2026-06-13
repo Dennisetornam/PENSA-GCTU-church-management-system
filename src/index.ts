@@ -9,6 +9,7 @@ import { authRoutes } from "./auth/routes";
 import { attendanceRoutes } from "./attendance/routes";
 import { analyticsRoutes } from "./analytics/routes";
 import { reportRoutes } from "./reports/routes";
+import { financeRoutes } from "./finance/routes";
 
 // The Durable Object class must be exported from the Worker entry module.
 export { RateLimiter };
@@ -37,5 +38,8 @@ app.route("/api/analytics", analyticsRoutes);
 
 // Reporting — members roster, attendance summary, inactive members (CSV/Excel/JSON)
 app.route("/api/reports", reportRoutes);
+
+// Finance — record giving per service (offerings, tithes, pledges, etc.)
+app.route("/api/finance", financeRoutes);
 
 export default app;

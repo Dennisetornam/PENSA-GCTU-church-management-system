@@ -6,7 +6,7 @@ export type Permission =
   | "attendance:record" | "attendance:read"
   | "events:manage" | "events:read" | "registrations:review"
   | "departments:manage" | "cells:manage" | "programmes:manage" | "gathering_types:manage"
-  | "analytics:view" | "reports:view" | "users:manage" | "roles:manage" | "audit:view";
+  | "analytics:view" | "reports:view" | "finance:view" | "finance:manage" | "users:manage" | "roles:manage" | "audit:view";
 
 const M: Record<Role, Partial<Record<Permission, Scope>>> = {
   super_admin: {
@@ -14,14 +14,15 @@ const M: Record<Role, Partial<Record<Permission, Scope>>> = {
     "attendance:record": "all", "attendance:read": "all", "events:manage": "all", "events:read": "all",
     "registrations:review": "all", "departments:manage": "all", "cells:manage": "all",
     "programmes:manage": "all", "gathering_types:manage": "all", "analytics:view": "all",
-    "reports:view": "all", "users:manage": "all", "roles:manage": "all", "audit:view": "all",
+    "reports:view": "all", "finance:view": "all", "finance:manage": "all",
+    "users:manage": "all", "roles:manage": "all", "audit:view": "all",
   },
   church_admin: {
     "members:create": "all", "members:read": "all", "members:update": "all", "members:delete": "all",
     "attendance:record": "all", "attendance:read": "all", "events:manage": "all", "events:read": "all",
     "registrations:review": "all", "departments:manage": "all", "cells:manage": "all",
     "programmes:manage": "all", "gathering_types:manage": "all", "analytics:view": "all",
-    "reports:view": "all", "users:manage": "all",
+    "reports:view": "all", "finance:view": "all", "finance:manage": "all", "users:manage": "all",
   },
   department_leader: {
     "members:read": "department", "members:update": "department",

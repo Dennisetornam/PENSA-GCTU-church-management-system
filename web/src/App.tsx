@@ -11,6 +11,7 @@ import { MemberProfile } from "./pages/MemberProfile";
 import { Attendance } from "./pages/Attendance";
 import { Analytics } from "./pages/Analytics";
 import { Reports } from "./pages/Reports";
+import { Finance } from "./pages/Finance";
 import { Departments, Cells, CellMembers, DepartmentMembers } from "./pages/Groups";
 import { Register } from "./pages/Register";
 
@@ -45,6 +46,7 @@ export function App() {
         <Route path="departments/:id" element={<DepartmentMembers />} />
         <Route path="cells" element={<Cells />} />
         <Route path="cells/:id" element={<CellMembers />} />
+        <Route path="finance" element={<Finance />} />
         <Route path="reports" element={<Reports />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />

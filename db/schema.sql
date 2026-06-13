@@ -411,6 +411,24 @@ CREATE TABLE membership_snapshots (
     created_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Finance: giving recorded per service (money in integer minor units / pesewas).
+CREATE TABLE finance_entries (
+    id              TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    category        TEXT NOT NULL CHECK (category IN
+                       ('offering_cash','offering_momo','tithe','pledge','fundraising','free_will')),
+    amount_minor    INTEGER NOT NULL,
+    currency        TEXT NOT NULL DEFAULT 'GHS',
+    service_type_id TEXT REFERENCES gathering_types(id) ON DELETE SET NULL,
+    payment_method  TEXT CHECK (payment_method IN ('cash','momo','bank','card','cheque')),
+    occurred_on     TEXT NOT NULL,
+    recorded_by     TEXT REFERENCES users(id) ON DELETE SET NULL,
+    notes           TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at      TEXT
+);
+CREATE INDEX ix_finance_date     ON finance_entries(occurred_on) WHERE deleted_at IS NULL;
+CREATE INDEX ix_finance_category ON finance_entries(category)    WHERE deleted_at IS NULL;
+
 -- =============================================================================
 -- SECTION 8 — TRIGGERS (updated_at + row_version maintenance)
 -- recursive_triggers is OFF by default in SQLite/D1, and the WHEN guard

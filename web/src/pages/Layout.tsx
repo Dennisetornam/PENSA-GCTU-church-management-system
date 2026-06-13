@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, UserPlus, CalendarCheck, Boxes, CircleDot,
-  FileBarChart, LineChart, Settings, LogOut, Search,
+  FileBarChart, LineChart, Settings, LogOut, Search, Wallet,
 } from "lucide-react";
 import { useAuth, roleLabel } from "../auth";
 import { Wordmark } from "../brand";
@@ -14,6 +14,7 @@ const NAV = [
   { to: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck },
   { to: "/dashboard/departments", label: "Departments", icon: Boxes },
   { to: "/dashboard/cells", label: "Cells", icon: CircleDot },
+  { to: "/dashboard/finance", label: "Finance", icon: Wallet, roles: ["super_admin", "church_admin"] },
   { to: "/dashboard/reports", label: "Reports", icon: FileBarChart },
   { to: "/dashboard/analytics", label: "Analytics", icon: LineChart },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
@@ -31,7 +32,7 @@ export function Layout() {
           <Wordmark subtle />
         </div>
         <nav className="flex-1 space-y-1 px-3">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
+          {NAV.filter((n) => !n.roles || n.roles.includes(me?.role ?? "")).map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
