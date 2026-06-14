@@ -28,6 +28,12 @@ function cookieValue(res: Response, name: string): string | null {
   return null;
 }
 
+function setCookieString(res: Response, name: string): string | null {
+  const h = res.headers as unknown as { getSetCookie?: () => string[] };
+  for (const c of h.getSetCookie?.() ?? []) if (c.startsWith(name + "=")) return c;
+  return null;
+}
+
 function call(app: Hono, env: TestEnv, path: string, init: RequestInit = {}) {
   const req = new Request(`${ORIGIN}${path}`, {
     method: "POST",
@@ -50,7 +56,20 @@ describe("Module 2 — auth routes", () => {
     const res = await call(app, env, "/auth/login", { body: JSON.stringify({ email: "admin@pensa.gctu", password: "Sup3rSecret!pw" }) });
     expect(res.status).toBe(200);
     expect(cookieValue(res, "__Host-at")).toBeTruthy();
-    expect(cookieValue(res, "__Host-rt")).toBeTruthy();
+    expect(cookieValue(res, "__Secure-rt")).toBeTruthy();
+  });
+
+  // Regression: a path-scoped refresh cookie must NOT use the `__Host-` prefix —
+  // browsers silently drop a `__Host-` cookie whose Path is not `/`, which broke
+  // token refresh (sessions died after the 15-min access token expired).
+  it("refresh cookie is path-scoped and uses a browser-storable prefix", async () => {
+    const res = await call(app, env, "/auth/login", { body: JSON.stringify({ email: "admin@pensa.gctu", password: "Sup3rSecret!pw" }) });
+    const rtCookie = setCookieString(res, "__Secure-rt")!;
+    expect(rtCookie).toContain("Path=/auth");
+    expect(rtCookie).not.toMatch(/^__Host-/);      // __Host- + non-root Path is rejected by browsers
+    // the access cookie, being root-scoped, may keep the stricter __Host- prefix
+    const atCookie = setCookieString(res, "__Host-at")!;
+    expect(atCookie).toContain("Path=/");
   });
 
   it("rejects wrong password with uniform 401", async () => {
@@ -78,28 +97,28 @@ describe("Module 2 — auth routes", () => {
 
   it("refresh rotates and detects reuse of the old token", async () => {
     const login = await call(app, env, "/auth/login", { body: JSON.stringify({ email: "admin@pensa.gctu", password: "Sup3rSecret!pw" }) });
-    const rt = cookieValue(login, "__Host-rt")!;
-    const r1 = await call(app, env, "/auth/refresh", { headers: { cookie: `__Host-rt=${rt}` } });
+    const rt = cookieValue(login, "__Secure-rt")!;
+    const r1 = await call(app, env, "/auth/refresh", { headers: { cookie: `__Secure-rt=${rt}` } });
     expect(r1.status).toBe(200);
     expect(cookieValue(r1, "__Host-at")).toBeTruthy();
     // reuse the original (now-rotated) token → reuse detection → 401
-    const reuse = await call(app, env, "/auth/refresh", { headers: { cookie: `__Host-rt=${rt}` } });
+    const reuse = await call(app, env, "/auth/refresh", { headers: { cookie: `__Secure-rt=${rt}` } });
     expect(reuse.status).toBe(401);
   });
 
   it("logout revokes the family so the refresh token no longer works", async () => {
     const login = await call(app, env, "/auth/login", { body: JSON.stringify({ email: "admin@pensa.gctu", password: "Sup3rSecret!pw" }) });
-    const rt = cookieValue(login, "__Host-rt")!;
-    await call(app, env, "/auth/logout", { headers: { cookie: `__Host-rt=${rt}` } });
-    const after = await call(app, env, "/auth/refresh", { headers: { cookie: `__Host-rt=${rt}` } });
+    const rt = cookieValue(login, "__Secure-rt")!;
+    await call(app, env, "/auth/logout", { headers: { cookie: `__Secure-rt=${rt}` } });
+    const after = await call(app, env, "/auth/refresh", { headers: { cookie: `__Secure-rt=${rt}` } });
     expect(after.status).toBe(401);
   });
 
   it("blocks refresh from a foreign origin (CSRF)", async () => {
     const login = await call(app, env, "/auth/login", { body: JSON.stringify({ email: "admin@pensa.gctu", password: "Sup3rSecret!pw" }) });
-    const rt = cookieValue(login, "__Host-rt")!;
+    const rt = cookieValue(login, "__Secure-rt")!;
     const res = await app.fetch(
-      new Request(`${ORIGIN}/auth/refresh`, { method: "POST", headers: { cookie: `__Host-rt=${rt}`, origin: "https://evil.example" } }),
+      new Request(`${ORIGIN}/auth/refresh`, { method: "POST", headers: { cookie: `__Secure-rt=${rt}`, origin: "https://evil.example" } }),
       env as never,
     );
     expect(res.status).toBe(403);

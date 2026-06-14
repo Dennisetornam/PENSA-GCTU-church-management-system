@@ -1,6 +1,6 @@
 // Same-origin API client. Auth rides on the __Host-at cookie (credentials).
 // On a 401 it transparently refreshes the access token via the rotating
-// __Host-rt cookie and retries once, so sessions survive past the 15-min
+// __Secure-rt cookie and retries once, so sessions survive past the 15-min
 // access-token lifetime (up to the 30-day refresh window).
 export class ApiError extends Error {
   constructor(public status: number, message: string) {

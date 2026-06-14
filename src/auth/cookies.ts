@@ -1,6 +1,10 @@
 // Hardened cookie builders for auth tokens.
+// NOTE: the refresh cookie is path-scoped to /auth, so it CANNOT use the
+// `__Host-` prefix (that prefix requires Path=/; browsers silently drop a
+// `__Host-` cookie set with any other path). `__Secure-` allows path scoping
+// while still requiring the Secure attribute.
 export const AT_COOKIE = "__Host-at";
-export const RT_COOKIE = "__Host-rt";
+export const RT_COOKIE = "__Secure-rt";
 export const CSRF_COOKIE = "__Host-csrf";
 
 export function authCookie(name: typeof AT_COOKIE | typeof RT_COOKIE, value: string, maxAgeSec: number, path = "/"): string {
