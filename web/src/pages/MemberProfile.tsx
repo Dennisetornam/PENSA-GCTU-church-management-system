@@ -89,7 +89,7 @@ interface AttData {
 const ATTENDED = new Set(["present", "late"]);
 const monthLabel = (ym: string) => {
   const [y, m] = ym.split("-");
-  return `${["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m)]} ${y?.slice(2)}`;
+  return `${["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m)]} ${y}`;
 };
 
 function AttendanceCard({ memberId }: { memberId: string }) {
@@ -127,7 +127,7 @@ function AttendanceCard({ memberId }: { memberId: string }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(33,27,51,.08)" />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#473F5C" }} interval={0} />
                 <Tooltip cursor={{ fill: "rgba(195,154,74,.08)" }} />
-                <Bar dataKey="attended" fill="#C39A4A" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="attended" fill="#C39A4A" radius={[6, 6, 0, 0]} maxBarSize={56} />
               </BarChart>
             </ResponsiveContainer>
           </div>
