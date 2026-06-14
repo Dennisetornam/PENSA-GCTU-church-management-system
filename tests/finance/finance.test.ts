@@ -110,6 +110,27 @@ describe("Module 7b — finance", () => {
     expect(cash.reference_image_key).toBeNull();
   });
 
+  it("edits an entry's figures", async () => {
+    const created = await (await rec({ category: "offering_cash", amount: 100, paymentMethod: "cash", serviceTypeId: "gt_sunday", occurredOn: "2026-06-07" })).json() as { id: string };
+    const put = await app.fetch(new Request(`https://x/api/finance/${created.id}`, { method: "PUT", headers: auth(token), body: JSON.stringify({ category: "offering_cash", amount: 250.75, paymentMethod: "momo", serviceTypeId: "gt_sunday", occurredOn: "2026-06-08" }) }), env as never);
+    expect(put.status).toBe(200);
+    const row = env.DB.__raw.prepare("SELECT amount_minor, payment_method, occurred_on FROM finance_entries WHERE id = ?").get(created.id) as { amount_minor: number; payment_method: string; occurred_on: string };
+    expect(row.amount_minor).toBe(25075);
+    expect(row.payment_method).toBe("momo");
+    expect(row.occurred_on).toBe("2026-06-08");
+  });
+
+  it("returns 404 when editing a missing entry", async () => {
+    const put = await app.fetch(new Request("https://x/api/finance/does-not-exist", { method: "PUT", headers: auth(token), body: JSON.stringify({ category: "tithe", amount: 10, memberName: "X", occurredOn: "2026-06-07" }) }), env as never);
+    expect(put.status).toBe(404);
+  });
+
+  it("edit is finance:manage-guarded", async () => {
+    const t = await signAccessToken({ sub: "x", role: "cell_leader", scope: { departments: [], cells: [] } }, env.JWT_SECRET);
+    const put = await app.fetch(new Request("https://x/api/finance/whatever", { method: "PUT", headers: auth(t), body: JSON.stringify({ category: "tithe", amount: 10, memberName: "X", occurredOn: "2026-06-07" }) }), env as never);
+    expect(put.status).toBe(403);
+  });
+
   it("image upload endpoint is finance:manage-guarded", async () => {
     const t = await signAccessToken({ sub: "x", role: "cell_leader", scope: { departments: [], cells: [] } }, env.JWT_SECRET);
     const r = await app.fetch(new Request("https://x/api/finance/image", { method: "POST", headers: auth(t), body: "{}" }), env as never);

@@ -33,6 +33,37 @@ export async function createEntry(db: D1Database, e: NewEntry): Promise<{ id: st
   return { id };
 }
 
+export async function getEntry(db: D1Database, id: string) {
+  return db.prepare("SELECT * FROM finance_entries WHERE id = ? AND deleted_at IS NULL LIMIT 1").bind(id).first();
+}
+
+export interface EntryPatch {
+  category: Category;
+  amountMinor: number;
+  currency: string;
+  serviceTypeId?: string | null;
+  paymentMethod?: string | null;
+  occurredOn: string;
+  memberId?: string | null;
+  memberName?: string | null;
+  pledgeStatus?: string | null;
+  referenceImageKey?: string | null;
+  notes?: string | null;
+}
+
+/** Update an entry's figures/details. session_id and recorded_by are left intact. */
+export async function updateEntry(db: D1Database, id: string, e: EntryPatch): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE finance_entries SET
+         category = ?, amount_minor = ?, currency = ?, service_type_id = ?, payment_method = ?,
+         occurred_on = ?, member_id = ?, member_name = ?, pledge_status = ?, reference_image_key = ?, notes = ?
+       WHERE id = ? AND deleted_at IS NULL`,
+    )
+    .bind(e.category, e.amountMinor, e.currency, e.serviceTypeId ?? null, e.paymentMethod ?? null, e.occurredOn, e.memberId ?? null, e.memberName ?? null, e.pledgeStatus ?? null, e.referenceImageKey ?? null, e.notes ?? null, id)
+    .run();
+}
+
 export interface ListParams {
   category?: string;
   from?: string;
@@ -56,8 +87,8 @@ export async function listEntries(db: D1Database, p: ListParams) {
 
   const { results } = await db
     .prepare(
-      `SELECT f.id, f.category, f.amount_minor, f.currency, f.payment_method, f.occurred_on, f.notes,
-              f.member_name, f.pledge_status, f.reference_image_key,
+      `SELECT f.id, f.category, f.amount_minor, f.currency, f.service_type_id, f.payment_method, f.occurred_on, f.notes,
+              f.member_id, f.member_name, f.pledge_status, f.reference_image_key,
               gt.name AS service_name, u.full_name AS recorded_by_name
        FROM finance_entries f
        LEFT JOIN gathering_types gt ON gt.id = f.service_type_id

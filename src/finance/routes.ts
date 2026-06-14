@@ -4,7 +4,7 @@ import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { detectImage, MAX_IMAGE_BYTES } from "../media/image";
-import { createEntry, listEntries, summary, CATEGORIES, METHODS, PLEDGE_STATUSES } from "./repository";
+import { createEntry, updateEntry, getEntry, listEntries, summary, CATEGORIES, METHODS, PLEDGE_STATUSES } from "./repository";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -63,6 +63,32 @@ app.post("/", authorize("finance:manage"), async (c) => {
      VALUES (lower(hex(randomblob(16))), ?, 'finance.recorded', 'finance', ?, ?, datetime('now'))`,
   ).bind(c.get("userId"), res.id, `${b.category} ${b.amount}`).run();
   return c.json(res, 201);
+});
+
+// Edit an existing entry (correct a mistake in the figures/details).
+app.put("/:id", authorize("finance:manage"), async (c) => {
+  const id = c.req.param("id");
+  const existing = await getEntry(c.env.DB, id);
+  if (!existing) return c.json({ error: "not found" }, 404);
+  const b = createSchema.parse(await c.req.json());
+  await updateEntry(c.env.DB, id, {
+    category: b.category,
+    amountMinor: Math.round(b.amount * 100),
+    currency: b.currency ?? "GHS",
+    serviceTypeId: b.serviceTypeId ?? null,
+    paymentMethod: b.paymentMethod ?? null,
+    occurredOn: b.occurredOn,
+    memberId: b.memberId ?? null,
+    memberName: b.category === "tithe" || b.category === "pledge" ? b.memberName ?? null : null,
+    pledgeStatus: b.category === "pledge" ? b.pledgeStatus ?? null : null,
+    referenceImageKey: b.category === "offering_momo" ? b.referenceImageKey ?? null : null,
+    notes: b.notes ?? null,
+  });
+  await c.env.DB.prepare(
+    `INSERT INTO audit_log (id, actor_user_id, action, entity_type, entity_id, summary, created_at)
+     VALUES (lower(hex(randomblob(16))), ?, 'finance.updated', 'finance', ?, ?, datetime('now'))`,
+  ).bind(c.get("userId"), id, `${b.category} ${b.amount}`).run();
+  return c.json({ ok: true });
 });
 
 app.get("/", authorize("finance:view"), async (c) =>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check, Upload, Paperclip, X } from "lucide-react";
+import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check, Upload, Paperclip, X, Pencil } from "lucide-react";
 import { api } from "../api";
 import { Spinner, Empty } from "../ui";
 
@@ -26,7 +26,7 @@ const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefin
 export interface Options { gatheringTypes: { id: string; name: string }[]; }
 export interface FinancePreset { serviceTypeId?: string; occurredOn?: string; sessionId?: string; sessionLabel?: string; }
 interface Summary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; }
-interface Entry { id: string; category: string; amount_minor: number; payment_method: string | null; occurred_on: string; service_name: string | null; recorded_by_name: string | null; member_name: string | null; pledge_status: string | null; reference_image_key: string | null; }
+interface Entry { id: string; category: string; amount_minor: number; service_type_id: string | null; payment_method: string | null; occurred_on: string; service_name: string | null; recorded_by_name: string | null; member_id: string | null; member_name: string | null; pledge_status: string | null; reference_image_key: string | null; notes: string | null; }
 interface MemberRow { id: string; full_name: string; member_code: string | null; }
 
 export function Finance() {
@@ -35,6 +35,7 @@ export function Finance() {
   const { data: sum, isLoading } = useQuery({ queryKey: ["finance-summary"], queryFn: () => api.get<Summary>("/api/finance/summary") });
   const { data: list } = useQuery({ queryKey: ["finance-list"], queryFn: () => api.get<{ results: Entry[] }>("/api/finance?limit=50") });
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Entry | null>(null);
   const refresh = () => { qc.invalidateQueries({ queryKey: ["finance-summary"] }); qc.invalidateQueries({ queryKey: ["finance-list"] }); };
 
   return (
@@ -79,7 +80,7 @@ export function Finance() {
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-ink/10 text-left text-ink-soft/65">
-              {["Date", "Category", "Member", "Amount", "Service", "Method", "Recorded by"].map((h) => <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>)}
+              {["Date", "Category", "Member", "Amount", "Service", "Method", "Recorded by", ""].map((h, i) => <th key={i} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>)}
             </tr></thead>
             <tbody>
               {(list?.results ?? []).map((e) => (
@@ -99,6 +100,9 @@ export function Finance() {
                     )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/75">{e.recorded_by_name ?? "—"}</td>
+                  <td className="whitespace-nowrap px-2 py-2.5 text-right">
+                    <button onClick={() => setEditing(e)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft/70 transition hover:bg-ink/[0.05] hover:text-ink" title="Edit entry"><Pencil size={13} /> Edit</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -107,26 +111,42 @@ export function Finance() {
       )}
 
       {open && o && <RecordModal o={o} onClose={() => setOpen(false)} onDone={() => { setOpen(false); refresh(); }} />}
+      {editing && o && <RecordModal o={o} entry={editing} onClose={() => setEditing(null)} onDone={() => { setEditing(null); refresh(); }} />}
     </div>
   );
 }
 
-export function RecordModal({ o, onClose, onDone, preset }: { o: Options; onClose: () => void; onDone: () => void; preset?: FinancePreset }) {
-  const sessionBound = !!preset?.sessionId;
-  const [f, setF] = useState({ category: "offering_cash", amount: "", serviceTypeId: preset?.serviceTypeId ?? "", paymentMethod: "cash", occurredOn: preset?.occurredOn ?? today(), memberId: "", memberName: "", pledgeStatus: "", referenceImageKey: "", referenceImageUrl: "", notes: "", sessionId: preset?.sessionId ?? "" });
+export function RecordModal({ o, onClose, onDone, preset, entry }: { o: Options; onClose: () => void; onDone: () => void; preset?: FinancePreset; entry?: Entry }) {
+  const isEdit = !!entry;
+  const sessionBound = !isEdit && !!preset?.sessionId;
+  const [f, setF] = useState(() =>
+    entry
+      ? {
+          category: entry.category, amount: (entry.amount_minor / 100).toFixed(2), serviceTypeId: entry.service_type_id ?? "",
+          paymentMethod: entry.payment_method ?? "cash", occurredOn: entry.occurred_on, memberId: entry.member_id ?? "",
+          memberName: entry.member_name ?? "", pledgeStatus: entry.pledge_status ?? "",
+          referenceImageKey: entry.reference_image_key ?? "",
+          referenceImageUrl: entry.reference_image_key ? `/api/finance/image?key=${encodeURIComponent(entry.reference_image_key)}` : "",
+          notes: entry.notes ?? "", sessionId: "",
+        }
+      : { category: "offering_cash", amount: "", serviceTypeId: preset?.serviceTypeId ?? "", paymentMethod: "cash", occurredOn: preset?.occurredOn ?? today(), memberId: "", memberName: "", pledgeStatus: "", referenceImageKey: "", referenceImageUrl: "", notes: "", sessionId: preset?.sessionId ?? "" },
+  );
   const [err, setErr] = useState<string | null>(null);
   const set = (p: Partial<typeof f>) => setF((s) => ({ ...s, ...p }));
   const m = useMutation({
-    mutationFn: () => api.post("/api/finance", {
-      ...f,
-      amount: Number(f.amount),
-      serviceTypeId: f.serviceTypeId || null,
-      sessionId: f.sessionId || null,
-      memberId: f.memberId || null,
-      memberName: needsMember(f.category) ? f.memberName.trim() || null : null,
-      pledgeStatus: f.category === "pledge" ? f.pledgeStatus || null : null,
-      referenceImageKey: f.category === "offering_momo" ? f.referenceImageKey || null : null,
-    }),
+    mutationFn: () => {
+      const body = {
+        ...f,
+        amount: Number(f.amount),
+        serviceTypeId: f.serviceTypeId || null,
+        sessionId: f.sessionId || null,
+        memberId: f.memberId || null,
+        memberName: needsMember(f.category) ? f.memberName.trim() || null : null,
+        pledgeStatus: f.category === "pledge" ? f.pledgeStatus || null : null,
+        referenceImageKey: f.category === "offering_momo" ? f.referenceImageKey || null : null,
+      };
+      return isEdit ? api.put(`/api/finance/${entry!.id}`, body) : api.post("/api/finance", body);
+    },
     onSuccess: onDone,
     onError: (e: Error) => setErr(e.message),
   });
@@ -136,7 +156,7 @@ export function RecordModal({ o, onClose, onDone, preset }: { o: Options; onClos
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-vespers-deep/40 p-4 backdrop-blur-sm" onClick={onClose}>
       <div className="card max-h-[90vh] w-full max-w-md overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-1 font-display text-2xl text-ink">Record giving</h3>
+        <h3 className="mb-1 font-display text-2xl text-ink">{isEdit ? "Edit entry" : "Record giving"}</h3>
         {sessionBound && <p className="mb-4 text-sm text-ink-soft/65">For <span className="font-medium text-gold">{preset?.sessionLabel}</span></p>}
         {!sessionBound && <div className="mb-4" />}
         <div className="space-y-3">
@@ -183,7 +203,7 @@ export function RecordModal({ o, onClose, onDone, preset }: { o: Options; onClos
           {err && <div className="rounded-xl border border-clay/30 bg-clay/8 px-3 py-2 text-sm text-clay">{err}</div>}
           <div className="flex gap-2 pt-1">
             <button className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
-            <button className="btn-gold flex-1" disabled={!amountOk || m.isPending} onClick={() => { setErr(null); m.mutate(); }}>{m.isPending ? <Spinner /> : "Save entry"}</button>
+            <button className="btn-gold flex-1" disabled={!amountOk || m.isPending} onClick={() => { setErr(null); m.mutate(); }}>{m.isPending ? <Spinner /> : isEdit ? "Save changes" : "Save entry"}</button>
           </div>
         </div>
       </div>
