@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
+import { detectImage, MAX_IMAGE_BYTES } from "../media/image";
 import { createEntry, listEntries, summary, CATEGORIES, METHODS, PLEDGE_STATUSES } from "./repository";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -25,6 +26,7 @@ const createSchema = z
     memberName: z.string().trim().max(120).optional().nullable(),
     pledgeStatus: z.enum(PLEDGE_STATUSES).optional().nullable(),
     sessionId: z.string().optional().nullable(),
+    referenceImageKey: z.string().max(200).optional().nullable(),
     notes: z.string().max(500).optional().nullable(),
   })
   // tithes & pledges must name the giver; pledges must state redemption
@@ -52,6 +54,8 @@ app.post("/", authorize("finance:manage"), async (c) => {
     memberName: b.category === "tithe" || b.category === "pledge" ? b.memberName ?? null : null,
     pledgeStatus: b.category === "pledge" ? b.pledgeStatus ?? null : null,
     sessionId: b.sessionId ?? null,
+    // a reference screenshot only makes sense for Momo offerings
+    referenceImageKey: b.category === "offering_momo" ? b.referenceImageKey ?? null : null,
     notes: b.notes ?? null,
   });
   await c.env.DB.prepare(
@@ -76,5 +80,30 @@ app.get("/", authorize("finance:view"), async (c) =>
 app.get("/summary", authorize("finance:view"), async (c) =>
   c.json(await summary(c.env.DB, { from: c.req.query("from"), to: c.req.query("to") })),
 );
+
+// Upload a Momo transaction-reference screenshot to R2; returns its key.
+app.post("/image", authorize("finance:manage"), async (c) => {
+  const form = await c.req.formData();
+  const raw = form.get("file");
+  if (raw === null || typeof raw === "string") return c.json({ error: "no file" }, 400);
+  const buf = new Uint8Array(await (raw as unknown as Blob).arrayBuffer());
+  if (buf.byteLength > MAX_IMAGE_BYTES) return c.json({ error: "image too large (max 5MB)" }, 413);
+  const kind = detectImage(buf);
+  if (!kind) return c.json({ error: "unsupported image type" }, 415);
+  const key = `finance/momo/${crypto.randomUUID()}.${kind.ext}`;
+  await c.env.MEDIA!.put(key, buf, { httpMetadata: { contentType: kind.type } });
+  return c.json({ key, url: `/api/finance/image?key=${encodeURIComponent(key)}` }, 201);
+});
+
+// Stream a finance reference image from R2 (finance:view).
+app.get("/image", authorize("finance:view"), async (c) => {
+  const key = c.req.query("key");
+  if (!key || !key.startsWith("finance/")) return c.json({ error: "forbidden" }, 403);
+  const obj = await c.env.MEDIA!.get(key);
+  if (!obj) return c.json({ error: "not found" }, 404);
+  return new Response(obj.body, {
+    headers: { "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream", "cache-control": "private, max-age=3600" },
+  });
+});
 
 export const financeRoutes = app;

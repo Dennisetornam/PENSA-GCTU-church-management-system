@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check } from "lucide-react";
+import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check, Upload, Paperclip, X } from "lucide-react";
 import { api } from "../api";
 import { Spinner, Empty } from "../ui";
 
@@ -26,7 +26,7 @@ const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefin
 export interface Options { gatheringTypes: { id: string; name: string }[]; }
 export interface FinancePreset { serviceTypeId?: string; occurredOn?: string; sessionId?: string; sessionLabel?: string; }
 interface Summary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; }
-interface Entry { id: string; category: string; amount_minor: number; payment_method: string | null; occurred_on: string; service_name: string | null; recorded_by_name: string | null; member_name: string | null; pledge_status: string | null; }
+interface Entry { id: string; category: string; amount_minor: number; payment_method: string | null; occurred_on: string; service_name: string | null; recorded_by_name: string | null; member_name: string | null; pledge_status: string | null; reference_image_key: string | null; }
 interface MemberRow { id: string; full_name: string; member_code: string | null; }
 
 export function Finance() {
@@ -92,7 +92,12 @@ export function Finance() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-2.5 font-medium text-ink">{cedis(e.amount_minor)}</td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/75">{e.service_name ?? "—"}</td>
-                  <td className="whitespace-nowrap px-4 py-2.5 capitalize text-ink-soft/75">{e.payment_method ?? "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5 capitalize text-ink-soft/75">
+                    {e.payment_method ?? "—"}
+                    {e.reference_image_key && (
+                      <a href={`/api/finance/image?key=${encodeURIComponent(e.reference_image_key)}`} target="_blank" rel="noreferrer" className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-gold hover:underline" title="View Momo reference"><Paperclip size={12} /> ref</a>
+                    )}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/75">{e.recorded_by_name ?? "—"}</td>
                 </tr>
               ))}
@@ -108,7 +113,7 @@ export function Finance() {
 
 export function RecordModal({ o, onClose, onDone, preset }: { o: Options; onClose: () => void; onDone: () => void; preset?: FinancePreset }) {
   const sessionBound = !!preset?.sessionId;
-  const [f, setF] = useState({ category: "offering_cash", amount: "", serviceTypeId: preset?.serviceTypeId ?? "", paymentMethod: "cash", occurredOn: preset?.occurredOn ?? today(), memberId: "", memberName: "", pledgeStatus: "", notes: "", sessionId: preset?.sessionId ?? "" });
+  const [f, setF] = useState({ category: "offering_cash", amount: "", serviceTypeId: preset?.serviceTypeId ?? "", paymentMethod: "cash", occurredOn: preset?.occurredOn ?? today(), memberId: "", memberName: "", pledgeStatus: "", referenceImageKey: "", referenceImageUrl: "", notes: "", sessionId: preset?.sessionId ?? "" });
   const [err, setErr] = useState<string | null>(null);
   const set = (p: Partial<typeof f>) => setF((s) => ({ ...s, ...p }));
   const m = useMutation({
@@ -120,6 +125,7 @@ export function RecordModal({ o, onClose, onDone, preset }: { o: Options; onClos
       memberId: f.memberId || null,
       memberName: needsMember(f.category) ? f.memberName.trim() || null : null,
       pledgeStatus: f.category === "pledge" ? f.pledgeStatus || null : null,
+      referenceImageKey: f.category === "offering_momo" ? f.referenceImageKey || null : null,
     }),
     onSuccess: onDone,
     onError: (e: Error) => setErr(e.message),
@@ -135,9 +141,12 @@ export function RecordModal({ o, onClose, onDone, preset }: { o: Options; onClos
         {!sessionBound && <div className="mb-4" />}
         <div className="space-y-3">
           <div><label className="label">Category</label>
-            <select className="field" value={f.category} onChange={(e) => set({ category: e.target.value, memberId: "", memberName: "", pledgeStatus: "" })}>{CATS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</select>
+            <select className="field" value={f.category} onChange={(e) => set({ category: e.target.value, memberId: "", memberName: "", pledgeStatus: "", referenceImageKey: "", referenceImageUrl: "" })}>{CATS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</select>
           </div>
 
+          {f.category === "offering_momo" && (
+            <MomoReference url={f.referenceImageUrl} onChange={(key, url) => set({ referenceImageKey: key, referenceImageUrl: url })} />
+          )}
           {needsMember(f.category) && (
             <MemberField value={f.memberName} onPick={(name, id) => set({ memberName: name, memberId: id ?? "" })} />
           )}
@@ -178,6 +187,41 @@ export function RecordModal({ o, onClose, onDone, preset }: { o: Options; onClos
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Upload a Momo transaction-reference screenshot to R2 before saving the entry.
+function MomoReference({ url, onChange }: { url: string; onChange: (key: string, url: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const pick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setErr(null); setBusy(true);
+    try {
+      const r = await api.upload<{ key: string; url: string }>("/api/finance/image", file);
+      onChange(r.key, r.url);
+    } catch (e) { setErr((e as Error).message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div>
+      <label className="label">Momo reference (screenshot)</label>
+      {url ? (
+        <div className="flex items-center gap-3 rounded-xl border border-ink/12 bg-ink/[0.02] p-2">
+          <img src={url} alt="Momo reference" className="h-14 w-14 rounded-lg object-cover" />
+          <span className="flex-1 text-sm text-ink-soft/75">Reference attached</span>
+          <button type="button" onClick={() => onChange("", "")} className="rounded-lg p-1.5 text-ink-soft/55 hover:bg-ink/5 hover:text-clay" title="Remove"><X size={16} /></button>
+        </div>
+      ) : (
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-ink/25 px-3 py-3 text-sm text-ink-soft/70 transition hover:border-gold hover:text-gold">
+          {busy ? <Spinner /> : <><Upload size={16} /> Upload reference image</>}
+          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={pick} disabled={busy} />
+        </label>
+      )}
+      {err && <div className="mt-1 text-xs text-clay">{err}</div>}
     </div>
   );
 }

@@ -98,4 +98,21 @@ describe("Module 7b — finance", () => {
     expect(row.member_name).toBeNull();
     expect(row.pledge_status).toBeNull();
   });
+
+  it("stores a Momo reference image key only for offering_momo", async () => {
+    expect((await rec({ category: "offering_momo", amount: 60, paymentMethod: "momo", referenceImageKey: "finance/momo/abc.jpg", occurredOn: "2026-06-07" })).status).toBe(201);
+    const momo = env.DB.__raw.prepare("SELECT reference_image_key FROM finance_entries WHERE category='offering_momo'").get() as { reference_image_key: string };
+    expect(momo.reference_image_key).toBe("finance/momo/abc.jpg");
+
+    // a reference on a non-momo category is ignored
+    await rec({ category: "offering_cash", amount: 20, referenceImageKey: "finance/momo/x.jpg", occurredOn: "2026-06-07" });
+    const cash = env.DB.__raw.prepare("SELECT reference_image_key FROM finance_entries WHERE category='offering_cash'").get() as { reference_image_key: string | null };
+    expect(cash.reference_image_key).toBeNull();
+  });
+
+  it("image upload endpoint is finance:manage-guarded", async () => {
+    const t = await signAccessToken({ sub: "x", role: "cell_leader", scope: { departments: [], cells: [] } }, env.JWT_SECRET);
+    const r = await app.fetch(new Request("https://x/api/finance/image", { method: "POST", headers: auth(t), body: "{}" }), env as never);
+    expect(r.status).toBe(403);
+  });
 });

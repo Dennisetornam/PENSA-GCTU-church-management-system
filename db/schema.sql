@@ -428,6 +428,8 @@ CREATE TABLE finance_entries (
     pledge_status   TEXT CHECK (pledge_status IN ('fully_redeemed','partly_redeemed')),
     -- the service/session this giving was collected during (optional)
     session_id      TEXT REFERENCES attendance_sessions(id) ON DELETE SET NULL,
+    -- R2 key of a Momo transaction-reference screenshot (optional)
+    reference_image_key TEXT,
     notes           TEXT,
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     deleted_at      TEXT

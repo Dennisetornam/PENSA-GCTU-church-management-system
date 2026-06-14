@@ -51,8 +51,32 @@ async function request<T>(path: string, init?: RequestInit, retried = false): Pr
   return (await res.json()) as T;
 }
 
+// Multipart upload (no JSON content-type) with the same refresh-and-retry behaviour.
+async function uploadRequest<T>(path: string, form: FormData, retried = false): Promise<T> {
+  const res = await fetch(path, { method: "POST", credentials: "include", body: form });
+  if (res.status === 401 && !retried) {
+    if (await refreshSession()) return uploadRequest<T>(path, form, true);
+  }
+  if (!res.ok) {
+    let msg = res.statusText;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) msg = body.error;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(res.status, msg);
+  }
+  return (await res.json()) as T;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : "{}" }),
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : "{}" }),
+  upload: <T>(path: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return uploadRequest<T>(path, fd);
+  },
 };
