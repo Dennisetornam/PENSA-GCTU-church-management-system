@@ -110,12 +110,21 @@ describe("Module 6 — sessions & marking", () => {
     await expect(checkInByQr(env.DB as never, id, token, env.JWT_SECRET)).rejects.toBeInstanceOf(NotFoundError);
   });
 
-  it("member attendance history reads from the monthly rollup", async () => {
-    const { id } = await createSession(env.DB as never, { gatheringTypeId: "gt_sunday", sessionDate: "2026-06-07" });
-    await markAttendance(env.DB as never, id, [{ memberId: "m1", status: "present" }], "manual", null);
-    await closeSession(env.DB as never, id);
+  it("member attendance trend aggregates attended gatherings", async () => {
+    const s1 = await createSession(env.DB as never, { gatheringTypeId: "gt_sunday", sessionDate: "2026-06-07" });
+    await markAttendance(env.DB as never, s1.id, [{ memberId: "m1", status: "present" }], "manual", null);
+    const s2 = await createSession(env.DB as never, { gatheringTypeId: "gt_midweek", sessionDate: "2026-06-10" });
+    await markAttendance(env.DB as never, s2.id, [{ memberId: "m1", status: "late" }], "manual", null);
+    // an absent mark must NOT count toward attended (and is stored sparsely, i.e. no row)
+    const s3 = await createSession(env.DB as never, { gatheringTypeId: "gt_sunday", sessionDate: "2026-06-14" });
+    await markAttendance(env.DB as never, s3.id, [{ memberId: "m1", status: "absent" }], "manual", null);
+
     const hist = await getMemberAttendance(env.DB as never, "m1");
-    expect((hist.monthly as { present: number }[])[0]?.present).toBe(1);
-    expect((hist.recent as unknown[]).length).toBe(1);
+    expect(hist.totalAttended).toBe(2);            // present + late, absent excluded
+    expect((hist.monthly as { year_month: string; attended: number }[])[0]).toEqual({ year_month: "2026-06", attended: 2 });
+    const byG = hist.byGathering as { gathering: string; attended: number }[];
+    expect(byG.find((g) => g.gathering === "Sunday Service")?.attended).toBe(1);
+    expect(byG.find((g) => g.gathering === "Midweek Service")?.attended).toBe(1);
+    expect((hist.recent as unknown[]).length).toBe(2);   // only the present + late marks are stored
   });
 });

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Pencil, Check, X, Phone, MessageCircle, GraduationCap, Home, Flame, Droplets, Users2 } from "lucide-react";
+import { ArrowLeft, Pencil, Check, X, Phone, MessageCircle, GraduationCap, Home, Flame, Droplets, Users2, CalendarCheck } from "lucide-react";
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { api } from "../api";
 import { Spinner, Badge, Avatar } from "../ui";
 
@@ -73,6 +74,78 @@ export function MemberProfile() {
           </div>
         )}
       </div>
+
+      {!editing && <AttendanceCard memberId={id} />}
+    </div>
+  );
+}
+
+interface AttData {
+  totalAttended: number;
+  byGathering: { gathering: string; attended: number }[];
+  monthly: { year_month: string; attended: number }[];
+  recent: { session_date: string; gathering: string; status: string; checked_in_at: string | null }[];
+}
+const ATTENDED = new Set(["present", "late"]);
+const monthLabel = (ym: string) => {
+  const [y, m] = ym.split("-");
+  return `${["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m)]} ${y?.slice(2)}`;
+};
+
+function AttendanceCard({ memberId }: { memberId: string }) {
+  const { data, isLoading } = useQuery({ queryKey: ["member-attendance", memberId], queryFn: () => api.get<AttData>(`/api/attendance/members/${memberId}`) });
+  const chart = (data?.monthly ?? []).map((r) => ({ month: monthLabel(r.year_month), attended: Number(r.attended) }));
+  const attendedRecent = (data?.recent ?? []).filter((r) => ATTENDED.has(r.status)).slice(0, 10);
+
+  return (
+    <div className="card mt-5 p-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 font-display text-xl text-ink"><CalendarCheck size={18} className="text-gold" /> Attendance trend</h3>
+        {data && <Badge tone="gold">{data.totalAttended} {data.totalAttended === 1 ? "gathering" : "gatherings"} attended</Badge>}
+      </div>
+
+      {isLoading ? (
+        <div className="grid h-40 place-items-center text-ink-soft/50"><Spinner /></div>
+      ) : (data?.totalAttended ?? 0) === 0 ? (
+        <p className="py-6 text-center text-sm text-ink-soft/60">No attendance recorded yet. Once this member is checked in at a session, their trend appears here.</p>
+      ) : (
+        <>
+          {/* per-gathering totals */}
+          <div className="mb-5 flex flex-wrap gap-2">
+            {(data?.byGathering ?? []).map((g) => (
+              <span key={g.gathering} className="inline-flex items-center gap-1.5 rounded-full bg-ink/[0.05] px-3 py-1.5 text-sm">
+                <span className="font-medium text-ink">{g.gathering}</span>
+                <span className="rounded-full bg-gold/15 px-1.5 text-xs font-semibold text-[#8a6a25]">{g.attended}</span>
+              </span>
+            ))}
+          </div>
+
+          {/* monthly trend */}
+          <div className="h-52">
+            <ResponsiveContainer>
+              <BarChart data={chart} margin={{ left: -22, right: 8, top: 6 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(33,27,51,.08)" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#473F5C" }} interval={0} />
+                <Tooltip cursor={{ fill: "rgba(195,154,74,.08)" }} />
+                <Bar dataKey="attended" fill="#C39A4A" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* recent gatherings attended */}
+          <h4 className="mb-2 mt-6 text-[0.7rem] font-semibold uppercase tracking-wider text-ink-soft/55">Recent gatherings</h4>
+          <ul className="divide-y divide-ink/[0.06]">
+            {attendedRecent.map((r, i) => (
+              <li key={i} className="flex items-center gap-3 py-2.5 text-sm">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-sage/15 text-[#4d5645]"><Check size={14} /></span>
+                <span className="font-medium text-ink">{r.gathering}</span>
+                {r.status === "late" && <Badge tone="clay">late</Badge>}
+                <span className="ml-auto tabular-nums text-ink-soft/55">{r.session_date}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

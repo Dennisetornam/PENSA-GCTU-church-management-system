@@ -222,19 +222,45 @@ export async function closeSession(db: D1Database, sessionId: string): Promise<v
 }
 
 export async function getMemberAttendance(db: D1Database, memberId: string) {
-  const { results: monthly } = await db
-    .prepare("SELECT year_month, present, late, excused, last_attended_date FROM member_attendance_monthly WHERE member_id = ? ORDER BY year_month DESC")
-    .bind(memberId)
-    .all();
-  const { results: recent } = await db
+  // Attended = checked in as present or late. Computed straight from the records
+  // (not the close-only monthly rollup) so open sessions count too.
+  const attended = "ar.status IN ('present','late')";
+
+  const { results: byGathering } = await db
     .prepare(
-      `SELECT s.session_date, gt.name AS gathering, ar.status
+      `SELECT gt.name AS gathering, COUNT(*) AS attended
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.session_id
        JOIN gathering_types gt ON gt.id = s.gathering_type_id
-       WHERE ar.member_id = ? ORDER BY s.session_date DESC LIMIT 20`,
+       WHERE ar.member_id = ? AND ${attended} AND s.deleted_at IS NULL
+       GROUP BY gt.id ORDER BY attended DESC`,
+    )
+    .bind(memberId)
+    .all<{ gathering: string; attended: number }>();
+
+  const { results: monthly } = await db
+    .prepare(
+      `SELECT substr(s.session_date, 1, 7) AS year_month, COUNT(*) AS attended
+       FROM attendance_records ar
+       JOIN attendance_sessions s ON s.id = ar.session_id
+       WHERE ar.member_id = ? AND ${attended} AND s.deleted_at IS NULL
+       GROUP BY year_month ORDER BY year_month ASC`,
+    )
+    .bind(memberId)
+    .all<{ year_month: string; attended: number }>();
+
+  const { results: recent } = await db
+    .prepare(
+      `SELECT s.session_date, gt.name AS gathering, ar.status, ar.checked_in_at
+       FROM attendance_records ar
+       JOIN attendance_sessions s ON s.id = ar.session_id
+       JOIN gathering_types gt ON gt.id = s.gathering_type_id
+       WHERE ar.member_id = ? AND s.deleted_at IS NULL
+       ORDER BY s.session_date DESC, ar.checked_in_at DESC LIMIT 50`,
     )
     .bind(memberId)
     .all();
-  return { monthly: monthly ?? [], recent: recent ?? [] };
+
+  const totalAttended = (byGathering ?? []).reduce((sum, r) => sum + Number(r.attended), 0);
+  return { totalAttended, byGathering: byGathering ?? [], monthly: monthly ?? [], recent: recent ?? [] };
 }
