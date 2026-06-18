@@ -154,4 +154,40 @@ describe("Module 7b — finance", () => {
     expect(may.base_minor).toBe(8000);
     expect(may.quota_minor).toBe(1200);
   });
+
+  const expense = (body: unknown, t = token) => app.fetch(new Request("https://x/api/finance/expenses", { method: "POST", headers: auth(t), body: JSON.stringify(body) }), env as never);
+
+  it("records an expense and subtracts it to give the net actual figure", async () => {
+    await rec({ category: "offering_cash", amount: 1000, occurredOn: "2026-06-07" });
+    await rec({ category: "tithe", amount: 500, memberName: "Ama", occurredOn: "2026-06-07" });
+    expect((await expense({ category: "Refreshments", amount: 120.5, paymentMethod: "cash", occurredOn: "2026-06-07" })).status).toBe(201);
+    await expense({ category: "Transport", amount: 80, paymentMethod: "momo", occurredOn: "2026-06-07" });
+
+    const row = env.DB.__raw.prepare("SELECT amount_minor, recorded_by FROM finance_expenses WHERE category='Refreshments'").get() as { amount_minor: number; recorded_by: string };
+    expect(row.amount_minor).toBe(12050);
+    expect(row.recorded_by).toBe("u-sa");
+
+    const sum = await (await app.fetch(new Request("https://x/api/finance/summary", { headers: auth(token) }), env as never)).json() as { totalMinor: number; expensesMinor: number; netMinor: number };
+    expect(sum.totalMinor).toBe(150000);     // 1500 GHS received
+    expect(sum.expensesMinor).toBe(20050);   // 120.50 + 80
+    expect(sum.netMinor).toBe(150000 - 20050);
+  });
+
+  it("lists and edits an expense", async () => {
+    const created = await (await expense({ category: "Logistics", amount: 60, paymentMethod: "cash", occurredOn: "2026-06-07" })).json() as { id: string };
+    const list = await (await app.fetch(new Request("https://x/api/finance/expenses", { headers: auth(token) }), env as never)).json() as { results: { id: string; category: string; recorded_by_name: string }[] };
+    expect(list.results[0]?.category).toBe("Logistics");
+    expect(list.results[0]?.recorded_by_name).toBe("Treasurer");
+
+    const put = await app.fetch(new Request(`https://x/api/finance/expenses/${created.id}`, { method: "PUT", headers: auth(token), body: JSON.stringify({ category: "Logistics", amount: 95.25, paymentMethod: "bank", occurredOn: "2026-06-08" }) }), env as never);
+    expect(put.status).toBe(200);
+    const row = env.DB.__raw.prepare("SELECT amount_minor, payment_method FROM finance_expenses WHERE id = ?").get(created.id) as { amount_minor: number; payment_method: string };
+    expect(row.amount_minor).toBe(9525);
+    expect(row.payment_method).toBe("bank");
+  });
+
+  it("expense endpoints are finance:manage-guarded", async () => {
+    const t = await signAccessToken({ sub: "x", role: "cell_leader", scope: { departments: [], cells: [] } }, env.JWT_SECRET);
+    expect((await expense({ category: "X", amount: 5, occurredOn: "2026-06-07" }, t)).status).toBe(403);
+  });
 });

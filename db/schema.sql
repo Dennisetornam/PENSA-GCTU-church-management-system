@@ -439,6 +439,22 @@ CREATE INDEX ix_finance_category ON finance_entries(category)    WHERE deleted_a
 CREATE INDEX ix_finance_member   ON finance_entries(member_id)   WHERE deleted_at IS NULL;
 CREATE INDEX ix_finance_session  ON finance_entries(session_id)  WHERE deleted_at IS NULL;
 
+-- Finance expenses: money spent. Net ("actual") = giving received minus expenses.
+CREATE TABLE finance_expenses (
+    id                 TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    category           TEXT NOT NULL,                 -- purpose/category (free text)
+    amount_minor       INTEGER NOT NULL,
+    currency           TEXT NOT NULL DEFAULT 'GHS',
+    payment_method     TEXT CHECK (payment_method IN ('cash','momo','bank','card','cheque')),
+    occurred_on        TEXT NOT NULL,
+    recorded_by        TEXT REFERENCES users(id) ON DELETE SET NULL,
+    receipt_image_key  TEXT,
+    notes              TEXT,
+    created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at         TEXT
+);
+CREATE INDEX ix_expense_date ON finance_expenses(occurred_on) WHERE deleted_at IS NULL;
+
 -- =============================================================================
 -- SECTION 8 — TRIGGERS (updated_at + row_version maintenance)
 -- recursive_triggers is OFF by default in SQLite/D1, and the WHEN guard

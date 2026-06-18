@@ -4,7 +4,7 @@ import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { detectImage, MAX_IMAGE_BYTES } from "../media/image";
-import { createEntry, updateEntry, getEntry, listEntries, summary, quotaByMonth, QUOTA_RATE, CATEGORIES, METHODS, PLEDGE_STATUSES } from "./repository";
+import { createEntry, updateEntry, getEntry, listEntries, summary, quotaByMonth, QUOTA_RATE, CATEGORIES, METHODS, PLEDGE_STATUSES, createExpense, updateExpense, getExpense, listExpenses } from "./repository";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -112,7 +112,67 @@ app.get("/quota", authorize("finance:view"), async (c) =>
   c.json({ rate: QUOTA_RATE, results: await quotaByMonth(c.env.DB) }),
 );
 
-// Upload a Momo transaction-reference screenshot to R2; returns its key.
+// ── Expenses (subtracted from giving to get the net "actual" figure) ───────────
+const expenseSchema = z.object({
+  category: z.string().trim().min(2).max(80),
+  amount: z.number().positive().max(100_000_000), // GHS
+  currency: z.string().length(3).optional(),
+  paymentMethod: z.enum(METHODS).optional().nullable(),
+  occurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  receiptImageKey: z.string().max(200).optional().nullable(),
+  notes: z.string().max(500).optional().nullable(),
+});
+
+app.post("/expenses", authorize("finance:manage"), async (c) => {
+  const b = expenseSchema.parse(await c.req.json());
+  const res = await createExpense(c.env.DB, {
+    category: b.category,
+    amountMinor: Math.round(b.amount * 100),
+    currency: b.currency ?? "GHS",
+    paymentMethod: b.paymentMethod ?? null,
+    occurredOn: b.occurredOn,
+    recordedBy: c.get("userId"),
+    receiptImageKey: b.receiptImageKey ?? null,
+    notes: b.notes ?? null,
+  });
+  await c.env.DB.prepare(
+    `INSERT INTO audit_log (id, actor_user_id, action, entity_type, entity_id, summary, created_at)
+     VALUES (lower(hex(randomblob(16))), ?, 'finance.expense.recorded', 'finance_expense', ?, ?, datetime('now'))`,
+  ).bind(c.get("userId"), res.id, `${b.category} ${b.amount}`).run();
+  return c.json(res, 201);
+});
+
+app.get("/expenses", authorize("finance:view"), async (c) =>
+  c.json(await listExpenses(c.env.DB, {
+    from: c.req.query("from"),
+    to: c.req.query("to"),
+    page: Number(c.req.query("page") ?? "1"),
+    limit: Number(c.req.query("limit") ?? "50"),
+  })),
+);
+
+app.put("/expenses/:id", authorize("finance:manage"), async (c) => {
+  const id = c.req.param("id");
+  const existing = await getExpense(c.env.DB, id);
+  if (!existing) return c.json({ error: "not found" }, 404);
+  const b = expenseSchema.parse(await c.req.json());
+  await updateExpense(c.env.DB, id, {
+    category: b.category,
+    amountMinor: Math.round(b.amount * 100),
+    currency: b.currency ?? "GHS",
+    paymentMethod: b.paymentMethod ?? null,
+    occurredOn: b.occurredOn,
+    receiptImageKey: b.receiptImageKey ?? null,
+    notes: b.notes ?? null,
+  });
+  await c.env.DB.prepare(
+    `INSERT INTO audit_log (id, actor_user_id, action, entity_type, entity_id, summary, created_at)
+     VALUES (lower(hex(randomblob(16))), ?, 'finance.expense.updated', 'finance_expense', ?, ?, datetime('now'))`,
+  ).bind(c.get("userId"), id, `${b.category} ${b.amount}`).run();
+  return c.json({ ok: true });
+});
+
+// Upload a finance image (Momo reference or expense receipt) to R2; returns its key.
 app.post("/image", authorize("finance:manage"), async (c) => {
   const form = await c.req.formData();
   const raw = form.get("file");
@@ -121,7 +181,7 @@ app.post("/image", authorize("finance:manage"), async (c) => {
   if (buf.byteLength > MAX_IMAGE_BYTES) return c.json({ error: "image too large (max 5MB)" }, 413);
   const kind = detectImage(buf);
   if (!kind) return c.json({ error: "unsupported image type" }, 415);
-  const key = `finance/momo/${crypto.randomUUID()}.${kind.ext}`;
+  const key = `finance/uploads/${crypto.randomUUID()}.${kind.ext}`;
   await c.env.MEDIA!.put(key, buf, { httpMetadata: { contentType: kind.type } });
   return c.json({ key, url: `/api/finance/image?key=${encodeURIComponent(key)}` }, 201);
 });

@@ -10,7 +10,7 @@ interface Summary { total: number; actualMembers: number; visitors: number; asso
 interface Dist { results: { id: string; name: string; count: number }[]; }
 interface Baptism { total: number; holyGhost: number; water: number; holyGhostPct: number; waterPct: number; }
 interface Regs { results: { id: string }[]; }
-interface FinanceSummary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; }
+interface FinanceSummary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; expensesMinor: number; netMinor: number; }
 
 const DONUT = ["#C39A4A", "#6E7A63", "#BC6A45", "#2A2247"];
 const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -59,8 +59,11 @@ export function Overview() {
               <div className="candlelight absolute inset-0 opacity-60" />
               <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gold/15 text-gold-soft"><Wallet size={22} /></span>
               <div className="relative">
-                <div className="eyebrow !text-gold-soft">In the church coffers</div>
-                <div className="mt-0.5 font-display text-4xl font-semibold text-ivory-soft">{coffers.isLoading ? <Spinner /> : cedis(coffers.data?.totalMinor ?? 0)}</div>
+                <div className="eyebrow !text-gold-soft">Actual in the church coffers</div>
+                <div className="mt-0.5 font-display text-4xl font-semibold text-ivory-soft">{coffers.isLoading ? <Spinner /> : cedis(coffers.data?.netMinor ?? 0)}</div>
+                {coffers.data && (coffers.data.expensesMinor > 0) && (
+                  <div className="mt-1 text-xs text-ivory-soft/55">{cedis(coffers.data.totalMinor)} received − {cedis(coffers.data.expensesMinor)} expenses</div>
+                )}
               </div>
               <ArrowUpRight size={20} className="relative ml-auto text-ivory-soft/50" />
             </Link>

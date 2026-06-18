@@ -10,7 +10,7 @@ interface Dist { results: { id: string; name: string; count: number }[]; }
 interface Baptism { total: number; holyGhost: number; water: number; holyGhostPct: number; waterPct: number; }
 interface Trend { results: { session_date: string; gathering: string; attended: number }[]; }
 interface Personality { member: { id: string; full_name: string; member_code: string | null; attendances: number } | null; }
-interface FinanceSummary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; }
+interface FinanceSummary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; expensesMinor: number; netMinor: number; }
 
 const PALETTE = ["#C39A4A", "#6E7A63", "#BC6A45", "#2A2247"];
 const FIN_CATS: { key: string; label: string }[] = [
@@ -88,9 +88,19 @@ export function Analytics() {
         <div className="card mb-5 p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h3 className="flex items-center gap-2 font-display text-xl text-ink"><Wallet size={18} className="text-gold" /> Finance performance</h3>
-            <div className="text-right">
-              <div className="text-[0.65rem] font-semibold uppercase tracking-widest text-ink-soft/55">Total received</div>
-              <div className="font-display text-2xl font-semibold text-ink">{finance.isLoading ? <Spinner /> : cedis(fin?.totalMinor ?? 0)}</div>
+            <div className="flex gap-5 text-right">
+              <div>
+                <div className="text-[0.65rem] font-semibold uppercase tracking-widest text-ink-soft/55">Received</div>
+                <div className="font-display text-xl font-semibold text-ink">{finance.isLoading ? <Spinner /> : cedis(fin?.totalMinor ?? 0)}</div>
+              </div>
+              <div>
+                <div className="text-[0.65rem] font-semibold uppercase tracking-widest text-ink-soft/55">Expenses</div>
+                <div className="font-display text-xl font-semibold text-clay">−{cedis(fin?.expensesMinor ?? 0)}</div>
+              </div>
+              <div>
+                <div className="text-[0.65rem] font-semibold uppercase tracking-widest text-gold">Net</div>
+                <div className="font-display text-xl font-semibold text-ink">{cedis(fin?.netMinor ?? 0)}</div>
+              </div>
             </div>
           </div>
           <div className="space-y-3">
