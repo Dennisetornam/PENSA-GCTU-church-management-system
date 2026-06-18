@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock, Wallet, Undo2 } from "lucide-react";
-import { api } from "../api";
+import { api, invalidateFinance } from "../api";
 import { Spinner, Badge, Empty, Avatar } from "../ui";
 import { RecordModal, type Options as FinanceOptions } from "./Finance";
 
@@ -150,7 +150,7 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
             sessionLabel: `${gatheringName} · ${session.data.session_date}`,
           }}
           onClose={() => setGiving(false)}
-          onDone={() => setGiving(false)}
+          onDone={() => { setGiving(false); invalidateFinance(qc); }}
         />
       )}
 

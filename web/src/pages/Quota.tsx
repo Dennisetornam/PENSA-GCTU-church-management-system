@@ -12,7 +12,15 @@ const monthLabel = (ym: string) => { const [y, m] = ym.split("-"); return `${MON
 const thisMonth = new Date().toISOString().slice(0, 7);
 
 export function Quota() {
-  const { data, isLoading } = useQuery({ queryKey: ["quota"], queryFn: () => api.get<QuotaResp>("/api/finance/quota") });
+  // Stay tightly in sync with finance: refetch on mount/refocus and poll while open.
+  const { data, isLoading } = useQuery({
+    queryKey: ["quota"],
+    queryFn: () => api.get<QuotaResp>("/api/finance/quota"),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 20000,
+    staleTime: 0,
+  });
   const rows = data?.results ?? [];
   const pct = Math.round((data?.rate ?? 0.15) * 100);
   const totalQuota = rows.reduce((a, r) => a + r.quota_minor, 0);

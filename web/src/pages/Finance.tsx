@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check, Upload, Paperclip, X, Pencil, Receipt, Minus } from "lucide-react";
-import { api } from "../api";
+import { api, invalidateFinance } from "../api";
 import { Spinner, Empty } from "../ui";
 
 const CATS = [
@@ -41,11 +41,7 @@ export function Finance() {
   const [editing, setEditing] = useState<Entry | null>(null);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const refresh = () => {
-    qc.invalidateQueries({ queryKey: ["finance-summary"] });
-    qc.invalidateQueries({ queryKey: ["finance-list"] });
-    qc.invalidateQueries({ queryKey: ["finance-expenses"] });
-  };
+  const refresh = () => invalidateFinance(qc);
 
   return (
     <div className="mx-auto max-w-5xl">

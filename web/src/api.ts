@@ -80,3 +80,12 @@ export const api = {
     return uploadRequest<T>(path, fd);
   },
 };
+
+// Every query whose data is derived from finance entries/expenses. Invalidate
+// them together after ANY finance mutation so the Quota section (and the
+// coffers + analytics figures) react immediately to the change.
+export const FINANCE_QUERY_KEYS = ["finance-summary", "finance-list", "finance-expenses", "quota", "coffers", "a-finance"] as const;
+
+export function invalidateFinance(qc: { invalidateQueries: (f: { queryKey: unknown[] }) => unknown }) {
+  for (const key of FINANCE_QUERY_KEYS) qc.invalidateQueries({ queryKey: [key] });
+}
