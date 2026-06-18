@@ -4,7 +4,7 @@ import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { detectImage, MAX_IMAGE_BYTES } from "../media/image";
-import { createEntry, updateEntry, getEntry, listEntries, summary, CATEGORIES, METHODS, PLEDGE_STATUSES } from "./repository";
+import { createEntry, updateEntry, getEntry, listEntries, summary, quotaByMonth, QUOTA_RATE, CATEGORIES, METHODS, PLEDGE_STATUSES } from "./repository";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -105,6 +105,11 @@ app.get("/", authorize("finance:view"), async (c) =>
 
 app.get("/summary", authorize("finance:view"), async (c) =>
   c.json(await summary(c.env.DB, { from: c.req.query("from"), to: c.req.query("to") })),
+);
+
+// Monthly sector quota (15% of offerings + tithes).
+app.get("/quota", authorize("finance:view"), async (c) =>
+  c.json({ rate: QUOTA_RATE, results: await quotaByMonth(c.env.DB) }),
 );
 
 // Upload a Momo transaction-reference screenshot to R2; returns its key.

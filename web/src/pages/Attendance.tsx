@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock, Wallet } from "lucide-react";
+import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock, Wallet, Undo2 } from "lucide-react";
 import { api } from "../api";
 import { Spinner, Badge, Empty, Avatar } from "../ui";
 import { RecordModal, type Options as FinanceOptions } from "./Finance";
@@ -106,6 +106,11 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
     mutationFn: (memberId: string) => api.put(`/api/attendance/sessions/${sessionId}/records`, { marks: [{ memberId, status: "present" }] }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["roster", sessionId] }),
   });
+  // Undo a check-in (mistaken). status "absent" removes the record (sparse storage).
+  const unmark = useMutation({
+    mutationFn: (memberId: string) => api.put(`/api/attendance/sessions/${sessionId}/records`, { marks: [{ memberId, status: "absent" }] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["roster", sessionId] }),
+  });
   const close = useMutation({
     mutationFn: () => api.post(`/api/attendance/sessions/${sessionId}/close`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["att-sessions"] }); onBack(); },
@@ -174,7 +179,10 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
                   <div className="text-sm text-ink-soft/55">{r.member_code ?? "—"}</div>
                 </div>
                 {inAlready ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-sage/15 px-4 py-2 text-sm font-semibold text-[#4d5645]"><Check size={16} /> Checked in</span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-sage/15 px-4 py-2 text-sm font-semibold text-[#4d5645]"><Check size={16} /> Checked in</span>
+                    <button onClick={() => unmark.mutate(r.id)} disabled={unmark.isPending} title="Undo check-in (mark not present)" className="inline-flex items-center gap-1 rounded-full border border-ink/15 px-3 py-2 text-sm font-medium text-ink-soft/70 transition hover:border-clay/40 hover:text-clay"><Undo2 size={15} /> Undo</button>
+                  </div>
                 ) : (
                   <button onClick={() => mark.mutate(r.id)} disabled={mark.isPending} className="btn-gold">Check in</button>
                 )}

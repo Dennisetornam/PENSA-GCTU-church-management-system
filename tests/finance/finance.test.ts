@@ -136,4 +136,22 @@ describe("Module 7b — finance", () => {
     const r = await app.fetch(new Request("https://x/api/finance/image", { method: "POST", headers: auth(t), body: "{}" }), env as never);
     expect(r.status).toBe(403);
   });
+
+  it("computes the monthly sector quota at 15% of offerings + tithes", async () => {
+    await rec({ category: "offering_cash", amount: 100, occurredOn: "2026-06-07" });
+    await rec({ category: "offering_momo", amount: 50, paymentMethod: "momo", occurredOn: "2026-06-07" });
+    await rec({ category: "tithe", amount: 200, memberName: "Ama Owusu", occurredOn: "2026-06-07" });
+    await rec({ category: "pledge", amount: 1000, memberName: "Kofi", pledgeStatus: "fully_redeemed", occurredOn: "2026-06-07" }); // excluded
+    await rec({ category: "fundraising", amount: 500, occurredOn: "2026-06-07" });                                                  // excluded
+    await rec({ category: "offering_cash", amount: 80, occurredOn: "2026-05-04" });                                                 // prior month
+
+    const q = await (await app.fetch(new Request("https://x/api/finance/quota", { headers: auth(token) }), env as never)).json() as { rate: number; results: { year_month: string; base_minor: number; quota_minor: number }[] };
+    expect(q.rate).toBe(0.15);
+    const jun = q.results.find((r) => r.year_month === "2026-06")!;
+    expect(jun.base_minor).toBe(35000);   // (100 + 50 + 200) GHS, pledge/fundraising excluded
+    expect(jun.quota_minor).toBe(5250);   // 15%
+    const may = q.results.find((r) => r.year_month === "2026-05")!;
+    expect(may.base_minor).toBe(8000);
+    expect(may.quota_minor).toBe(1200);
+  });
 });

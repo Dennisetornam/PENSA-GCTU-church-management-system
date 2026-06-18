@@ -83,6 +83,22 @@ app.get("/members", authorize("members:read"), async (c) => {
   return c.json(data);
 });
 
+// Birthdays — members born in a given month (1–12), for sending greetings.
+// Registered before /members/:id so "birthdays" isn't treated as an id.
+app.get("/members/birthdays", authorize("members:read"), async (c) => {
+  const month = Number(c.req.query("month") ?? "0");
+  const mm = month >= 1 && month <= 12 ? String(month).padStart(2, "0") : null;
+  const where = ["deleted_at IS NULL", "registration_status = 'approved'", "date_of_birth IS NOT NULL"];
+  const args: unknown[] = [];
+  if (mm) { where.push("substr(date_of_birth, 6, 2) = ?"); args.push(mm); }
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, member_code, full_name, date_of_birth, phone_number, whatsapp_number
+     FROM members WHERE ${where.join(" AND ")}
+     ORDER BY substr(date_of_birth, 9, 2) ASC, full_name ASC`,
+  ).bind(...args).all();
+  return c.json({ month: mm ? month : null, results: results ?? [] });
+});
+
 app.get("/members/:id", authorize("members:read"), async (c) => {
   const member = await getMember(c.env.DB, c.req.param("id"));
   if (!member) return c.json({ error: "not found" }, 404);

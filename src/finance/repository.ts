@@ -5,6 +5,10 @@ export const METHODS = ["cash", "momo", "bank", "card", "cheque"] as const;
 export const PLEDGE_STATUSES = ["fully_redeemed", "partly_redeemed"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
+// Monthly sector quota: 15% of offerings (cash + Momo) + tithes.
+export const QUOTA_RATE = 0.15;
+export const QUOTA_CATEGORIES = ["offering_cash", "offering_momo", "tithe"] as const;
+
 export interface NewEntry {
   category: Category;
   amountMinor: number;
@@ -99,6 +103,26 @@ export async function listEntries(db: D1Database, p: ListParams) {
     .bind(...args, limit, (page - 1) * limit)
     .all();
   return { results: results ?? [], page, limit };
+}
+
+/** Per-month sector quota: base = offerings + tithes that month, due = 15% of base. */
+export async function quotaByMonth(db: D1Database) {
+  const placeholders = QUOTA_CATEGORIES.map(() => "?").join(",");
+  const { results } = await db
+    .prepare(
+      `SELECT substr(occurred_on, 1, 7) AS year_month, SUM(amount_minor) AS base_minor, COUNT(*) AS n
+       FROM finance_entries
+       WHERE deleted_at IS NULL AND category IN (${placeholders})
+       GROUP BY year_month ORDER BY year_month DESC`,
+    )
+    .bind(...QUOTA_CATEGORIES)
+    .all<{ year_month: string; base_minor: number; n: number }>();
+  return (results ?? []).map((r) => ({
+    year_month: r.year_month,
+    base_minor: r.base_minor,
+    quota_minor: Math.round(r.base_minor * QUOTA_RATE),
+    n: r.n,
+  }));
 }
 
 export async function summary(db: D1Database, p: { from?: string; to?: string } = {}) {
