@@ -105,24 +105,44 @@ export async function listEntries(db: D1Database, p: ListParams) {
   return { results: results ?? [], page, limit };
 }
 
-/** Per-month sector quota: base = offerings + tithes that month, due = 15% of base. */
+/**
+ * Per-month sector quota. The base is NET: offerings + tithes received that
+ * month, minus that month's expenses (floored at 0). Due = 15% of the net base.
+ */
 export async function quotaByMonth(db: D1Database) {
   const placeholders = QUOTA_CATEGORIES.map(() => "?").join(",");
-  const { results } = await db
+  const { results: gross } = await db
     .prepare(
-      `SELECT substr(occurred_on, 1, 7) AS year_month, SUM(amount_minor) AS base_minor, COUNT(*) AS n
+      `SELECT substr(occurred_on, 1, 7) AS year_month, SUM(amount_minor) AS gross_minor, COUNT(*) AS n
        FROM finance_entries
        WHERE deleted_at IS NULL AND category IN (${placeholders})
-       GROUP BY year_month ORDER BY year_month DESC`,
+       GROUP BY year_month`,
     )
     .bind(...QUOTA_CATEGORIES)
-    .all<{ year_month: string; base_minor: number; n: number }>();
-  return (results ?? []).map((r) => ({
-    year_month: r.year_month,
-    base_minor: r.base_minor,
-    quota_minor: Math.round(r.base_minor * QUOTA_RATE),
-    n: r.n,
-  }));
+    .all<{ year_month: string; gross_minor: number; n: number }>();
+  const { results: exp } = await db
+    .prepare(
+      `SELECT substr(occurred_on, 1, 7) AS year_month, SUM(amount_minor) AS exp_minor
+       FROM finance_expenses WHERE deleted_at IS NULL GROUP BY year_month`,
+    )
+    .all<{ year_month: string; exp_minor: number }>();
+  const expByMonth = new Map((exp ?? []).map((r) => [r.year_month, Number(r.exp_minor)]));
+
+  return (gross ?? [])
+    .map((r) => {
+      const grossMinor = Number(r.gross_minor);
+      const expensesMinor = expByMonth.get(r.year_month) ?? 0;
+      const baseMinor = Math.max(0, grossMinor - expensesMinor); // net base, never negative
+      return {
+        year_month: r.year_month,
+        gross_minor: grossMinor,
+        expenses_minor: expensesMinor,
+        base_minor: baseMinor,
+        quota_minor: Math.round(baseMinor * QUOTA_RATE),
+        n: Number(r.n),
+      };
+    })
+    .sort((a, b) => b.year_month.localeCompare(a.year_month)); // most recent first
 }
 
 function dateWhere(p: { from?: string; to?: string }) {

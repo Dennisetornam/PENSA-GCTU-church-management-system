@@ -190,4 +190,20 @@ describe("Module 7b — finance", () => {
     const t = await signAccessToken({ sub: "x", role: "cell_leader", scope: { departments: [], cells: [] } }, env.JWT_SECRET);
     expect((await expense({ category: "X", amount: 5, occurredOn: "2026-06-07" }, t)).status).toBe(403);
   });
+
+  it("quota base is net: that month's expenses are subtracted before the 15%", async () => {
+    await rec({ category: "offering_cash", amount: 400, occurredOn: "2026-06-07" });
+    await rec({ category: "tithe", amount: 200, memberName: "Ama", occurredOn: "2026-06-07" });
+    await expense({ category: "Logistics", amount: 150, occurredOn: "2026-06-10" }); // same month, reduces base
+    await expense({ category: "Misc", amount: 50, occurredOn: "2026-05-01" });        // other month, no effect on June
+
+    const q = await (await app.fetch(new Request("https://x/api/finance/quota", { headers: auth(token) }), env as never)).json() as {
+      results: { year_month: string; gross_minor: number; expenses_minor: number; base_minor: number; quota_minor: number }[];
+    };
+    const jun = q.results.find((r) => r.year_month === "2026-06")!;
+    expect(jun.gross_minor).toBe(60000);     // 600 offerings + tithes
+    expect(jun.expenses_minor).toBe(15000);  // 150 expenses
+    expect(jun.base_minor).toBe(45000);      // net 450
+    expect(jun.quota_minor).toBe(6750);      // 15% of 450
+  });
 });

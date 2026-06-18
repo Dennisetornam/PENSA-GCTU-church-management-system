@@ -3,7 +3,7 @@ import { Landmark } from "lucide-react";
 import { api } from "../api";
 import { Spinner, Empty } from "../ui";
 
-interface QuotaRow { year_month: string; base_minor: number; quota_minor: number; n: number; }
+interface QuotaRow { year_month: string; gross_minor: number; expenses_minor: number; base_minor: number; quota_minor: number; n: number; }
 interface QuotaResp { rate: number; results: QuotaRow[]; }
 
 const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -31,7 +31,7 @@ export function Quota() {
       <header className="mb-7">
         <div className="eyebrow mb-1.5">Sector quota</div>
         <h1 className="font-display text-4xl font-semibold text-ink">Monthly quota</h1>
-        <p className="mt-2 text-ink-soft/70">{pct}% of each month’s offerings (cash + Momo) and tithes is set aside for the sector.</p>
+        <p className="mt-2 text-ink-soft/70">{pct}% of each month’s offerings (cash + Momo) and tithes, after expenses, is set aside for the sector.</p>
       </header>
 
       {/* this month + running total */}
@@ -41,7 +41,10 @@ export function Quota() {
           <div className="relative">
             <div className="eyebrow !text-gold-soft flex items-center gap-1.5"><Landmark size={14} /> Due this month · {monthLabel(thisMonth)}</div>
             <div className="mt-1 font-display text-4xl font-semibold text-ivory-soft">{isLoading ? <Spinner /> : cedis(current?.quota_minor ?? 0)}</div>
-            <div className="mt-1 text-sm text-ivory-soft/65">{pct}% of {cedis(current?.base_minor ?? 0)}</div>
+            <div className="mt-1 text-sm text-ivory-soft/65">{pct}% of {cedis(current?.base_minor ?? 0)} net</div>
+            {current && current.expenses_minor > 0 && (
+              <div className="mt-0.5 text-xs text-ivory-soft/45">{cedis(current.gross_minor)} offerings + tithes − {cedis(current.expenses_minor)} expenses</div>
+            )}
           </div>
         </div>
         <div className="card p-6">
@@ -59,7 +62,7 @@ export function Quota() {
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-ink/10 text-left text-ink-soft/65">
-              {["Month", "Offerings + tithes", `Quota (${pct}%)`, "Entries"].map((h) => <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>)}
+              {["Month", "Offerings + tithes", "Expenses", "Net base", `Quota (${pct}%)`].map((h) => <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>)}
             </tr></thead>
             <tbody>
               {rows.map((r) => (
@@ -68,9 +71,10 @@ export function Quota() {
                     {monthLabel(r.year_month)}
                     {r.year_month === thisMonth && <span className="ml-2 rounded-full bg-gold/15 px-2 py-0.5 text-[0.65rem] font-semibold text-[#8a6a25]">this month</span>}
                   </td>
+                  <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/80">{cedis(r.gross_minor)}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5 text-clay">{r.expenses_minor > 0 ? `−${cedis(r.expenses_minor)}` : "—"}</td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/80">{cedis(r.base_minor)}</td>
                   <td className="whitespace-nowrap px-4 py-2.5 font-semibold text-gold">{cedis(r.quota_minor)}</td>
-                  <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/55">{r.n}</td>
                 </tr>
               ))}
             </tbody>
