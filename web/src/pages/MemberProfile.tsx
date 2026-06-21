@@ -64,8 +64,8 @@ export function MemberProfile() {
             <Field icon={<Home size={15} />} label="Vacation residence">{m.residence_during_vacation ?? "—"}</Field>
             <Field icon={<Users2 size={15} />} label="Cell">{o?.cells.find((c) => c.id === m.cell_id)?.name ?? "—"}</Field>
             <Field icon={<Users2 size={15} />} label="Departments">{m.departments.map((d) => d.name).join(", ") || "—"}</Field>
-            <Field icon={<Phone size={15} />} label="Phone">{m.phone_number}</Field>
-            <Field icon={<MessageCircle size={15} />} label="WhatsApp">{m.whatsapp_number ?? "—"}</Field>
+            <Field icon={<Phone size={15} />} label="Phone"><a href={`sms:${m.phone_number}`} className="text-ink hover:text-gold hover:underline">{m.phone_number}</a></Field>
+            <Field icon={<MessageCircle size={15} />} label="WhatsApp">{m.whatsapp_number || m.phone_number ? <a href={`https://wa.me/${(m.whatsapp_number ?? m.phone_number).replace(/[^\d]/g, "")}`} target="_blank" rel="noreferrer" className="text-[#4d5645] hover:underline">{m.whatsapp_number ?? m.phone_number}</a> : "—"}</Field>
             <Field icon={<Flame size={15} />} label="Holy Ghost baptism">{m.holy_ghost_baptism ? `Yes${m.holy_ghost_baptism_date ? " · " + m.holy_ghost_baptism_date : ""}` : "No"}</Field>
             <Field icon={<Droplets size={15} />} label="Water baptism">{m.water_baptism ? `Yes${m.water_baptism_date ? " · " + m.water_baptism_date : ""}` : "No"}</Field>
             <Field label="Date of birth">{m.date_of_birth ?? "—"}</Field>

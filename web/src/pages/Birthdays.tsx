@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Cake, Phone, MessageCircle, Copy, Check } from "lucide-react";
+import { Cake, Phone, MessageCircle } from "lucide-react";
 import { api } from "../api";
 import { Spinner, Empty, Avatar } from "../ui";
+import { BulkMessageBar } from "./BulkMessage";
 
 interface Bday { id: string; member_code: string | null; full_name: string; date_of_birth: string; phone_number: string; whatsapp_number: string | null; }
 
@@ -18,13 +19,6 @@ export function Birthdays() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const { data, isLoading } = useQuery({ queryKey: ["birthdays", month], queryFn: () => api.get<{ results: Bday[] }>(`/api/members/birthdays?month=${month}`) });
   const rows = data?.results ?? [];
-  const [copied, setCopied] = useState(false);
-
-  const copyAll = async () => {
-    await navigator.clipboard.writeText(rows.map((r) => r.phone_number).join(", "));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  };
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -40,12 +34,12 @@ export function Birthdays() {
       </header>
 
       {rows.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/12 px-3.5 py-1.5 text-sm font-semibold text-[#8a6a25]"><Cake size={15} /> {rows.length} {rows.length === 1 ? "birthday" : "birthdays"}</span>
-          <button onClick={copyAll} className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3.5 py-1.5 text-sm font-medium text-ink-soft/75 transition hover:border-ink/30 hover:text-ink">
-            {copied ? <><Check size={15} className="text-sage" /> Copied</> : <><Copy size={15} /> Copy all numbers</>}
-          </button>
-        </div>
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/12 px-3.5 py-1.5 text-sm font-semibold text-[#8a6a25]"><Cake size={15} /> {rows.length} {rows.length === 1 ? "birthday" : "birthdays"}</span>
+          </div>
+          <BulkMessageBar recipients={rows} context={`${MONTHS[month - 1]} birthdays`} defaultMessage={"Happy birthday from your PENSA GCTU family! 🎉 May this new year of your life overflow with God's grace and favour."} />
+        </>
       )}
 
       {isLoading ? (

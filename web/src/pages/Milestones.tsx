@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Flame, Droplets, ChevronRight, X, Phone, MessageCircle } from "lucide-react";
 import { api } from "../api";
 import { Spinner, Empty, Avatar } from "../ui";
+import { BulkMessageBar } from "./BulkMessage";
 
 interface Baptism { total: number; holyGhost: number; water: number; holyGhostPct: number; waterPct: number; }
 interface Pending { id: string; member_code: string | null; full_name: string; phone_number: string; whatsapp_number: string | null; }
@@ -70,6 +71,14 @@ function PendingModal({ kind, onClose }: { kind: Kind; onClose: () => void }) {
           ) : rows.length === 0 ? (
             <Empty title="Everyone has received it" sub="No approved members are pending this baptism." />
           ) : (
+            <>
+            <BulkMessageBar
+              recipients={rows}
+              context={TITLE[kind]}
+              defaultMessage={kind === "holy_ghost"
+                ? "Grace and peace! We'd love to journey with you toward the baptism of the Holy Ghost. Please reach out — PENSA GCTU."
+                : "Grace and peace! We'd love to support you in taking the step of water baptism. Please reach out — PENSA GCTU."}
+            />
             <ul className="space-y-1.5">
               {rows.map((r) => (
                 <li key={r.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-ink/[0.03]">
@@ -85,6 +94,7 @@ function PendingModal({ kind, onClose }: { kind: Kind; onClose: () => void }) {
                 </li>
               ))}
             </ul>
+            </>
           )}
         </div>
       </div>

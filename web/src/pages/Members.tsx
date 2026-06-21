@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Search, ChevronRight } from "lucide-react";
 import { api } from "../api";
 import { Avatar, Badge, Spinner, Empty } from "../ui";
+import { BulkMessageBar } from "./BulkMessage";
 
 interface Row { id: string; member_code: string | null; full_name: string; phone_number: string; cell_id: string | null; membership_status: string; }
 
@@ -38,6 +39,8 @@ export function Members() {
         <Search size={18} className="ml-2 text-ink-soft/45" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, phone or member ID…" className="w-full bg-transparent py-2 text-ink outline-none placeholder:text-ink/30" />
       </div>
+
+      {dq && rows.length > 0 && <BulkMessageBar recipients={rows} context={`“${dq}” · ${rows.length} shown`} />}
 
       {isLoading ? (
         <div className="grid h-24 place-items-center text-ink-soft/50"><Spinner /></div>

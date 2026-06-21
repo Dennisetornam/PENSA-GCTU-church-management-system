@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Users2 } from "lucide-react";
 import { api } from "../api";
 import { Spinner, Badge, Avatar, Empty } from "../ui";
+import { BulkMessageBar } from "./BulkMessage";
 
 interface Dist { results: { id: string; name: string; count: number }[]; }
 interface Options { departments: { id: string; name: string }[]; cells: { id: string; name: string }[]; }
@@ -85,6 +86,8 @@ function GroupMembers({ dimension }: { dimension: "cell" | "department" }) {
       ) : rows.length === 0 ? (
         <Empty title="No members yet" sub={`No members are assigned to this ${dimension}.`} />
       ) : (
+        <>
+        <BulkMessageBar recipients={rows} context={name} />
         <div className="card divide-y divide-ink/[0.06]">
           {rows.map((m) => (
             <Link key={m.id} to={`/dashboard/members/${m.id}`} className="flex items-center gap-4 p-4 transition hover:bg-ink/[0.03]">
@@ -98,6 +101,7 @@ function GroupMembers({ dimension }: { dimension: "cell" | "department" }) {
             </Link>
           ))}
         </div>
+        </>
       )}
     </div>
   );
