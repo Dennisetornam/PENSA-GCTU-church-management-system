@@ -58,12 +58,12 @@ export function Finance() {
       </header>
 
       {/* net / actual figure */}
-      <div className="card candlelight relative mb-5 overflow-hidden bg-vespers p-6 text-ivory-soft">
+      <div className="card candlelight relative mb-5 overflow-hidden bg-vespers p-5 text-ivory-soft sm:p-6">
         <div className="candlelight absolute inset-0 opacity-60" />
         <div className="relative flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="eyebrow !text-gold-soft">Actual in the coffers</div>
-            <div className="mt-1 font-display text-5xl font-semibold text-ivory-soft">{isLoading ? <Spinner /> : cedis(sum?.netMinor ?? 0)}</div>
+            <div className="mt-1 font-display text-4xl font-semibold text-ivory-soft sm:text-5xl">{isLoading ? <Spinner /> : cedis(sum?.netMinor ?? 0)}</div>
           </div>
           <div className="flex gap-6 text-sm">
             <div>

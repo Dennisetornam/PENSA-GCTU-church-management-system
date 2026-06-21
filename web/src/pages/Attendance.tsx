@@ -172,19 +172,19 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
           {rows.map((r) => {
             const inAlready = r.status === "present" || r.status === "late";
             return (
-              <li key={r.id} className="card flex items-center gap-4 p-3.5">
+              <li key={r.id} className="card flex items-center gap-3 p-3 sm:gap-4 sm:p-3.5">
                 <Avatar name={r.full_name} />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-ink">{r.full_name}</div>
-                  <div className="text-sm text-ink-soft/55">{r.member_code ?? "—"}</div>
+                  <div className="truncate font-medium text-ink">{r.full_name}</div>
+                  <div className="truncate text-sm text-ink-soft/55">{r.member_code ?? "—"}</div>
                 </div>
                 {inAlready ? (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-sage/15 px-4 py-2 text-sm font-semibold text-[#4d5645]"><Check size={16} /> Checked in</span>
-                    <button onClick={() => unmark.mutate(r.id)} disabled={unmark.isPending} title="Undo check-in (mark not present)" className="inline-flex items-center gap-1 rounded-full border border-ink/15 px-3 py-2 text-sm font-medium text-ink-soft/70 transition hover:border-clay/40 hover:text-clay"><Undo2 size={15} /> Undo</button>
+                  <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-sage/15 px-3 py-2 text-sm font-semibold text-[#4d5645] sm:px-4"><Check size={16} /><span className="hidden sm:inline">Checked in</span><span className="sm:hidden">In</span></span>
+                    <button onClick={() => unmark.mutate(r.id)} disabled={unmark.isPending} title="Undo check-in (mark not present)" className="inline-flex items-center gap-1 rounded-full border border-ink/15 px-3 py-2 text-sm font-medium text-ink-soft/70 transition hover:border-clay/40 hover:text-clay"><Undo2 size={15} /><span className="hidden sm:inline">Undo</span></button>
                   </div>
                 ) : (
-                  <button onClick={() => mark.mutate(r.id)} disabled={mark.isPending} className="btn-gold">Check in</button>
+                  <button onClick={() => mark.mutate(r.id)} disabled={mark.isPending} className="btn-gold shrink-0">Check in</button>
                 )}
               </li>
             );
