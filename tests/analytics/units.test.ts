@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
-  getSummary, getDistribution, getBaptism, getAttendanceTrend, getGrowth, buildMembershipSnapshot, getPersonalityOfWeek,
+  getSummary, getDistribution, getBaptism, getUnbaptized, getAttendanceTrend, getGrowth, buildMembershipSnapshot, getPersonalityOfWeek,
 } from "../../src/analytics/repository";
 import { createSession, markAttendance, closeSession } from "../../src/attendance/repository";
 import { makeTestEnv, type TestEnv } from "../helpers/env";
@@ -69,6 +69,18 @@ describe("Module 7 — analytics", () => {
     expect(b.holyGhost).toBe(2);
     expect(b.holyGhostPct).toBe(50);
     expect(b.waterPct).toBe(25);
+  });
+
+  it("lists members yet to receive each baptism", async () => {
+    await addMember(env, "1", { hgb: 1, wb: 1 });
+    await addMember(env, "2", { hgb: 1, wb: 0 });
+    await addMember(env, "3", { hgb: 0, wb: 0 });
+
+    const hg = (await getUnbaptized(env.DB as never, "holy_ghost")) as { id: string }[];
+    expect(hg.map((r) => r.id)).toEqual(["3"]); // only member 3 lacks Holy Ghost baptism
+
+    const water = (await getUnbaptized(env.DB as never, "water")) as { id: string }[];
+    expect(water.map((r) => r.id).sort()).toEqual(["2", "3"]); // members 2 and 3 lack water baptism
   });
 
   it("attendance trend reads from session summaries", async () => {

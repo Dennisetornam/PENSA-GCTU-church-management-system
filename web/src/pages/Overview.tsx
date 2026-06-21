@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { Users, UserCheck, Sparkles, ArrowUpRight, Droplets, Flame, Wallet } from "lucide-react";
+import { Users, UserCheck, Sparkles, ArrowUpRight, Wallet } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { StatCard, Spinner, Badge } from "../ui";
+import { SpiritualMilestones } from "./Milestones";
 
 interface Summary { total: number; actualMembers: number; visitors: number; associates: number; alumni: number; active90d: number; holyGhostBaptized: number; waterBaptized: number; }
 interface Dist { results: { id: string; name: string; count: number }[]; }
-interface Baptism { total: number; holyGhost: number; water: number; holyGhostPct: number; waterPct: number; }
 interface Regs { results: { id: string }[]; }
 interface FinanceSummary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; expensesMinor: number; netMinor: number; }
 
@@ -20,7 +20,6 @@ export function Overview() {
   const canFinance = me?.role === "super_admin" || me?.role === "church_admin";
   const summary = useQuery({ queryKey: ["summary"], queryFn: () => api.get<Summary>("/api/analytics/summary") });
   const cells = useQuery({ queryKey: ["dist-cell"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=cell") });
-  const baptism = useQuery({ queryKey: ["baptism"], queryFn: () => api.get<Baptism>("/api/analytics/baptism") });
   const pending = useQuery({ queryKey: ["pending"], queryFn: () => api.get<Regs>("/api/registrations?status=pending") });
   const coffers = useQuery({ queryKey: ["coffers"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance });
 
@@ -99,32 +98,11 @@ export function Overview() {
               </div>
             </div>
 
-            {/* Baptism */}
-            <div className="card p-6">
-              <h3 className="font-display text-xl text-ink">Spiritual milestones</h3>
-              <p className="mb-5 text-sm text-ink-soft/65">Across {baptism.data?.total ?? 0} members.</p>
-              <Meter icon={<Flame size={16} />} label="Holy Ghost baptism" pct={baptism.data?.holyGhostPct ?? 0} value={baptism.data?.holyGhost ?? 0} tone="#C39A4A" />
-              <div className="h-5" />
-              <Meter icon={<Droplets size={16} />} label="Water baptism" pct={baptism.data?.waterPct ?? 0} value={baptism.data?.water ?? 0} tone="#6E7A63" />
-            </div>
+            {/* Baptism — clickable to see who's pending */}
+            <SpiritualMilestones />
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-function Meter({ icon, label, pct, value, tone }: { icon: React.ReactNode; label: string; pct: number; value: number; tone: string }) {
-  return (
-    <div>
-      <div className="mb-2 flex items-center gap-2 text-sm text-ink">
-        <span style={{ color: tone }}>{icon}</span>
-        <span className="font-medium">{label}</span>
-        <span className="ml-auto tabular-nums text-ink-soft/60">{value} · {pct}%</span>
-      </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-ink/[0.07]">
-        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, pct)}%`, background: tone }} />
-      </div>
     </div>
   );
 }

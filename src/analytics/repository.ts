@@ -84,6 +84,20 @@ export async function getBaptism(db: D1Database) {
   return { total, holyGhost, water, holyGhostPct: pct(holyGhost), waterPct: pct(water) };
 }
 
+/** Approved members who have NOT yet received the given baptism. */
+export async function getUnbaptized(db: D1Database, type: "holy_ghost" | "water") {
+  const col = type === "water" ? "water_baptism" : "holy_ghost_baptism";
+  const { results } = await db
+    .prepare(
+      `SELECT id, member_code, full_name, phone_number, whatsapp_number
+       FROM members
+       WHERE deleted_at IS NULL AND registration_status='approved' AND ${col} = 0
+       ORDER BY full_name`,
+    )
+    .all();
+  return results ?? [];
+}
+
 export async function getAttendanceTrend(db: D1Database, p: { gatheringTypeId?: string; limit?: number }) {
   const limit = Math.min(365, Math.max(1, p.limit ?? 90));
   const where = ["su.session_id IS NOT NULL"];

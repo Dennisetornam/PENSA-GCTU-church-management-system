@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
-import { Crown, Flame, Droplets, Wallet } from "lucide-react";
+import { Crown, Wallet } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { Avatar, Spinner, Badge } from "../ui";
+import { SpiritualMilestones } from "./Milestones";
 
 interface Summary { total: number; actualMembers: number; visitors: number; associates: number; alumni: number; active90d: number; }
 interface Dist { results: { id: string; name: string; count: number }[]; }
-interface Baptism { total: number; holyGhost: number; water: number; holyGhostPct: number; waterPct: number; }
 interface Trend { results: { session_date: string; gathering: string; attended: number }[]; }
 interface Personality { member: { id: string; full_name: string; member_code: string | null; attendances: number } | null; }
 interface FinanceSummary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; expensesMinor: number; netMinor: number; }
@@ -26,7 +26,6 @@ export function Analytics() {
   const summary = useQuery({ queryKey: ["a-summary"], queryFn: () => api.get<Summary>("/api/analytics/summary") });
   const cells = useQuery({ queryKey: ["a-cell"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=cell") });
   const depts = useQuery({ queryKey: ["a-dept"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=department") });
-  const baptism = useQuery({ queryKey: ["a-baptism"], queryFn: () => api.get<Baptism>("/api/analytics/baptism") });
   const trend = useQuery({ queryKey: ["a-trend"], queryFn: () => api.get<Trend>("/api/analytics/attendance-trend?limit=12") });
   const personality = useQuery({ queryKey: ["a-personality"], queryFn: () => api.get<Personality>("/api/analytics/personality") });
   const finance = useQuery({ queryKey: ["a-finance"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance });
@@ -174,27 +173,9 @@ export function Analytics() {
           </div>
         </div>
 
-        {/* Baptism */}
-        <div className="card p-6">
-          <h3 className="mb-1 font-display text-xl text-ink">Spiritual milestones</h3>
-          <p className="mb-5 text-sm text-ink-soft/65">Across {baptism.data?.total ?? 0} members.</p>
-          <Meter icon={<Flame size={16} />} label="Holy Ghost baptism" pct={baptism.data?.holyGhostPct ?? 0} tone="#C39A4A" />
-          <div className="h-5" />
-          <Meter icon={<Droplets size={16} />} label="Water baptism" pct={baptism.data?.waterPct ?? 0} tone="#6E7A63" />
-        </div>
+        {/* Baptism — clickable to see who's pending */}
+        <SpiritualMilestones />
       </div>
-    </div>
-  );
-}
-
-function Meter({ icon, label, pct, tone }: { icon: React.ReactNode; label: string; pct: number; tone: string }) {
-  return (
-    <div>
-      <div className="mb-2 flex items-center gap-2 text-sm text-ink">
-        <span style={{ color: tone }}>{icon}</span><span className="font-medium">{label}</span>
-        <span className="ml-auto tabular-nums text-ink-soft/60">{pct}%</span>
-      </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-ink/[0.07]"><div className="h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: tone }} /></div>
     </div>
   );
 }
