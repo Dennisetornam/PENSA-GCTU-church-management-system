@@ -27,11 +27,13 @@ export function MemberProfile() {
   const { data: m, isLoading } = useQuery({ queryKey: ["member", id], queryFn: () => api.get<Member>(`/api/members/${id}`) });
   const { data: o } = useQuery({ queryKey: ["options"], queryFn: () => api.get<Options>("/register/options") });
   const [editing, setEditing] = useState(false);
+  const [zoom, setZoom] = useState(false);
 
   if (isLoading) return <div className="grid h-60 place-items-center text-ink-soft/50"><Spinner /></div>;
   if (!m) return <div className="mx-auto max-w-2xl"><Link to="/dashboard/members" className="text-ink-soft/60">← Members</Link><p className="mt-6 font-display text-2xl text-ink">Member not found.</p></div>;
 
-  const photo = m.profile_picture_key ? `/api/members/${m.id}/photo` : null;
+  const photoThumb = m.profile_picture_key ? `/api/members/${m.id}/photo?variant=thumb` : null;
+  const photoFull = m.profile_picture_key ? `/api/members/${m.id}/photo` : null;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -42,7 +44,11 @@ export function MemberProfile() {
         <div className="candlelight relative flex flex-wrap items-center gap-5 border-b border-ink/10 bg-vespers p-6 text-ivory-soft">
           <div className="candlelight absolute inset-0 opacity-60" />
           <div className="relative">
-            {photo ? <img src={photo} alt={m.full_name} className="h-20 w-20 rounded-2xl object-cover ring-2 ring-gold/40" /> : <div className="h-20 w-20 rounded-2xl ring-2 ring-gold/40"><Avatar name={m.full_name} /></div>}
+            {photoThumb ? (
+              <button type="button" onClick={() => setZoom(true)} title="View full photo" className="block">
+                <img src={photoThumb} alt={m.full_name} loading="eager" decoding="async" className="h-20 w-20 cursor-zoom-in rounded-2xl object-cover ring-2 ring-gold/40 transition hover:ring-gold" />
+              </button>
+            ) : <div className="h-20 w-20 rounded-2xl ring-2 ring-gold/40"><Avatar name={m.full_name} /></div>}
           </div>
           <div className="relative flex-1">
             <h1 className="font-display text-3xl font-semibold text-ivory-soft">{m.full_name}</h1>
@@ -76,6 +82,13 @@ export function MemberProfile() {
       </div>
 
       {!editing && <AttendanceCard memberId={id} />}
+
+      {zoom && photoFull && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-vespers-deep/80 p-4 backdrop-blur-sm" onClick={() => setZoom(false)}>
+          <button onClick={() => setZoom(false)} aria-label="Close" className="absolute right-4 top-4 rounded-lg p-2 text-ivory-soft/70 hover:bg-white/10 hover:text-ivory-soft"><X size={22} /></button>
+          <img src={photoFull} alt={m.full_name} className="max-h-[88vh] max-w-full rounded-2xl object-contain shadow-2xl" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }

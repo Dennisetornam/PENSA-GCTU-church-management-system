@@ -5,6 +5,7 @@ import { Check, Upload, ChevronLeft, ChevronRight, PartyPopper } from "lucide-re
 import { api } from "../api";
 import { Wordmark } from "../brand";
 import { Spinner } from "../ui";
+import { resizeImage } from "../imageResize";
 
 // Cloudflare Turnstile TEST site key (always passes). Swap for the real key at launch.
 const TURNSTILE_SITEKEY = "1x00000000000000000000AA";
@@ -75,13 +76,19 @@ export function Register() {
   async function uploadPhoto(file: File) {
     setUploading(true);
     try {
+      // Shrink in-browser: a display-quality "full" + a tiny thumbnail.
+      const [full, thumb] = await Promise.all([
+        resizeImage(file, 1600, 0.85),
+        resizeImage(file, 256, 0.8),
+      ]);
       const body = new FormData();
-      body.append("file", file);
+      body.append("file", full, "photo.jpg");
+      body.append("thumb", thumb, "thumb.jpg");
       const res = await fetch("/register/image", { method: "POST", credentials: "include", body });
       if (!res.ok) throw new Error();
       const data = (await res.json()) as { key: string };
       set({ profileImageKey: data.key });
-      setPreview(URL.createObjectURL(file));
+      setPreview(URL.createObjectURL(full));
     } catch {
       setErr("That image couldn't be uploaded. Try a JPG or PNG under 5MB.");
     } finally {

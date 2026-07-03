@@ -2,6 +2,11 @@
 
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
+/** Derived R2 key of an image's thumbnail (inserts ".thumb" before the extension). */
+export function thumbKeyOf(key: string): string {
+  return key.replace(/(\.[^./]+)$/, ".thumb$1");
+}
+
 /** Sniff a supported image type from magic bytes. Returns null if unsupported. */
 export function detectImage(buf: Uint8Array): { type: string; ext: string } | null {
   if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return { type: "image/jpeg", ext: "jpg" };

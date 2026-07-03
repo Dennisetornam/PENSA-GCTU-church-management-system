@@ -17,6 +17,7 @@ import { verifyTurnstile } from "../auth/turnstile";
 import { getRegistrationOptions } from "./options";
 import { draftSchema, submitSchema } from "./schemas";
 import { getDraft, upsertDraft, attachDraftImage, submitRegistration } from "./repository";
+import { thumbKeyOf } from "../media/image";
 
 const DRAFT_COOKIE = "pensa_reg_draft";
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -97,6 +98,17 @@ app.post("/image", rateLimit(LIMIT_RULES.registerImage, deps), async (c) => {
   if (!kind) return c.json({ error: "unsupported image type" }, 415);
   const key = `registrations/drafts/${token}/${crypto.randomUUID()}.${kind.ext}`;
   await c.env.MEDIA!.put(key, buf, { httpMetadata: { contentType: kind.type } });
+
+  // Optional thumbnail (stored at the derived ".thumb" key) for fast list/header loads.
+  const rawThumb = form.get("thumb");
+  if (rawThumb !== null && typeof rawThumb !== "string") {
+    const tbuf = new Uint8Array(await (rawThumb as unknown as Blob).arrayBuffer());
+    const tkind = detectImage(tbuf);
+    if (tkind && tbuf.byteLength <= MAX_IMAGE_BYTES) {
+      await c.env.MEDIA!.put(thumbKeyOf(key), tbuf, { httpMetadata: { contentType: tkind.type } });
+    }
+  }
+
   await attachDraftImage(c.env.DB, token, key);
   return c.json({ key, previewUrl: `/register/image?key=${encodeURIComponent(key)}` });
 });

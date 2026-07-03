@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check, Upload, Paperclip, X, Pencil, Receipt, Minus } from "lucide-react";
 import { api, invalidateFinance } from "../api";
+import { resizeToFile } from "../imageResize";
 import { Spinner, Empty } from "../ui";
 
 const CATS = [
@@ -279,7 +280,9 @@ function ImageUpload({ label, url, onChange }: { label: string; url: string; onC
     if (!file) return;
     setErr(null); setBusy(true);
     try {
-      const r = await api.upload<{ key: string; url: string }>("/api/finance/image", file);
+      // Shrink before upload (kept large enough to stay legible for receipts).
+      const optimized = await resizeToFile(file, 2000, 0.85);
+      const r = await api.upload<{ key: string; url: string }>("/api/finance/image", optimized);
       onChange(r.key, r.url);
     } catch (e) { setErr((e as Error).message); }
     finally { setBusy(false); }
@@ -289,7 +292,7 @@ function ImageUpload({ label, url, onChange }: { label: string; url: string; onC
       <label className="label">{label}</label>
       {url ? (
         <div className="flex items-center gap-3 rounded-xl border border-ink/12 bg-ink/[0.02] p-2">
-          <img src={url} alt={label} className="h-14 w-14 rounded-lg object-cover" />
+          <img src={url} alt={label} loading="lazy" decoding="async" className="h-14 w-14 rounded-lg object-cover" />
           <span className="flex-1 text-sm text-ink-soft/75">Attached</span>
           <button type="button" onClick={() => onChange("", "")} className="rounded-lg p-1.5 text-ink-soft/55 hover:bg-ink/5 hover:text-clay" title="Remove"><X size={16} /></button>
         </div>

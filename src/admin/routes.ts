@@ -8,6 +8,7 @@ import { authorize } from "../auth/context";
 import { approveRegistration, rejectRegistration, NotFoundError, ConflictError } from "../registration/approval";
 import { listMembers, getMember, changeMemberStatus, updateMember } from "../members/repository";
 import { normalizeGhanaPhone } from "../registration/schemas";
+import { thumbKeyOf } from "../media/image";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -105,15 +106,21 @@ app.get("/members/:id", authorize("members:read"), async (c) => {
   return c.json(member);
 });
 
-// Stream a member's profile photo from R2
+// Stream a member's profile photo from R2. ?variant=thumb serves the small
+// thumbnail (fast); default serves the full image (for the click-to-zoom view).
 app.get("/members/:id/photo", authorize("members:read"), async (c) => {
   const row = await c.env.DB.prepare("SELECT profile_picture_key FROM members WHERE id = ? AND deleted_at IS NULL")
     .bind(c.req.param("id")).first<{ profile_picture_key: string | null }>();
-  if (!row?.profile_picture_key) return c.json({ error: "no photo" }, 404);
-  const obj = await c.env.MEDIA!.get(row.profile_picture_key);
+  const key = row?.profile_picture_key;
+  if (!key) return c.json({ error: "no photo" }, 404);
+
+  let obj = null;
+  if (c.req.query("variant") === "thumb") obj = await c.env.MEDIA!.get(thumbKeyOf(key));
+  if (!obj) obj = await c.env.MEDIA!.get(key); // fall back to full (older members have no thumb)
   if (!obj) return c.json({ error: "not found" }, 404);
+
   return new Response(obj.body, {
-    headers: { "content-type": obj.httpMetadata?.contentType ?? "image/jpeg", "cache-control": "private, max-age=300" },
+    headers: { "content-type": obj.httpMetadata?.contentType ?? "image/jpeg", "cache-control": "private, max-age=86400" },
   });
 });
 

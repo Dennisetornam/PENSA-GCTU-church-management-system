@@ -5,6 +5,7 @@
 import type { Env } from "../types";
 import type { MemberData } from "./schemas";
 import { nextMemberCode } from "../members/codes";
+import { thumbKeyOf } from "../media/image";
 
 export class NotFoundError extends Error {}
 export class ConflictError extends Error {}
@@ -48,6 +49,11 @@ export async function approveRegistration(
       const ext = draftKey.split(".").pop() ?? "jpg";
       profileKey = `members/${memberId}/avatar.${ext}`;
       await env.MEDIA!.put(profileKey, src.body, { httpMetadata: src.httpMetadata });
+      // Promote the thumbnail too, if the draft had one.
+      const draftThumb = await env.MEDIA!.get(thumbKeyOf(draftKey));
+      if (draftThumb) {
+        await env.MEDIA!.put(thumbKeyOf(profileKey), draftThumb.body, { httpMetadata: draftThumb.httpMetadata });
+      }
     }
   }
 
