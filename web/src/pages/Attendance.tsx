@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock, Wallet, Undo2 } from "lucide-react";
 import { api, invalidateFinance } from "../api";
 import { Spinner, Badge, Empty, Avatar } from "../ui";
@@ -97,19 +97,42 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
   const dq = useDebounced(q);
   const session = useQuery({ queryKey: ["session", sessionId], queryFn: () => api.get<{ gathering_type_id: string; session_date: string; status: string; summary: unknown }>(`/api/attendance/sessions/${sessionId}`) });
   const options = useQuery({ queryKey: ["options"], queryFn: () => api.get<FinanceOptions>("/register/options") });
-  const roster = useQuery({ queryKey: ["roster", sessionId, dq], queryFn: () => api.get<{ results: RosterRow[] }>(`/api/attendance/sessions/${sessionId}/roster?q=${encodeURIComponent(dq)}&limit=40`) });
+  const roster = useQuery({
+    queryKey: ["roster", sessionId, dq],
+    queryFn: () => api.get<{ results: RosterRow[] }>(`/api/attendance/sessions/${sessionId}/roster?q=${encodeURIComponent(dq)}&limit=200`),
+    placeholderData: keepPreviousData, // never blank the list while a search/refetch is in flight
+  });
 
   const gatheringName = (options.data?.gatheringTypes ?? []).find((g) => g.id === session.data?.gathering_type_id)?.name ?? "Session";
   const open = session.data?.status === "open";
 
+  // Optimistically flip a member's status across every cached roster view, so we
+  // don't refetch the whole roster after each check-in (which used to blow the
+  // read rate-limit and blank the list mid-attendance).
+  const setStatus = (memberId: string, status: string | null) =>
+    qc.setQueriesData<{ results: RosterRow[] }>({ queryKey: ["roster", sessionId] }, (old) =>
+      old ? { ...old, results: old.results.map((r) => (r.id === memberId ? { ...r, status } : r)) } : old,
+    );
+  const optimistic = (status: string | null) => ({
+    onMutate: async (memberId: string) => {
+      await qc.cancelQueries({ queryKey: ["roster", sessionId] });
+      const prev = qc.getQueriesData<{ results: RosterRow[] }>({ queryKey: ["roster", sessionId] });
+      setStatus(memberId, status);
+      return { prev };
+    },
+    onError: (_e: unknown, _id: string, ctx: { prev: [readonly unknown[], { results: RosterRow[] } | undefined][] } | undefined) => {
+      ctx?.prev.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
+  });
+
   const mark = useMutation({
     mutationFn: (memberId: string) => api.put(`/api/attendance/sessions/${sessionId}/records`, { marks: [{ memberId, status: "present" }] }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["roster", sessionId] }),
+    ...optimistic("present"),
   });
   // Undo a check-in (mistaken). status "absent" removes the record (sparse storage).
   const unmark = useMutation({
     mutationFn: (memberId: string) => api.put(`/api/attendance/sessions/${sessionId}/records`, { marks: [{ memberId, status: "absent" }] }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["roster", sessionId] }),
+    ...optimistic(null),
   });
   const close = useMutation({
     mutationFn: () => api.post(`/api/attendance/sessions/${sessionId}/close`),

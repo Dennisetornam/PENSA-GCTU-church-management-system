@@ -25,8 +25,9 @@ export const LIMIT_RULES = {
   // 2. Admin Login — 5 attempts / 15 minutes / IP
   login: { name: "login", limit: 5, windowMs: FIFTEEN_MIN, scope: "ip" },
 
-  // 3. Member Search / Check-In — 300 searches / hour / admin user (anti-scraping)
-  checkin: { name: "checkin", limit: 300, windowMs: HOUR, scope: "user" },
+  // 3. Member Search / Check-In — 2000 reads / hour / admin user (anti-scraping
+  //    ceiling; generous so large-congregation attendance never runs into it)
+  checkin: { name: "checkin", limit: 2000, windowMs: HOUR, scope: "user" },
 
   // 4. Attendance Submission — 500 actions / hour / admin user
   attendance: { name: "attendance", limit: 500, windowMs: HOUR, scope: "user" },
