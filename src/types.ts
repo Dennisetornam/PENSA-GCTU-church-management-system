@@ -13,6 +13,10 @@ export interface Env {
   // Secrets (wrangler secret put …)
   JWT_SECRET: string;
   TURNSTILE_SECRET: string;
+  // Finance step-up gate (separate confidential login for the Finance section).
+  // Stored as secrets — NEVER hardcoded in the repo.
+  FINANCE_EMAIL?: string;
+  FINANCE_PASSWORD_HASH?: string;
   // Public Turnstile site key (non-secret; exposed to the registration form).
   TURNSTILE_SITE_KEY?: string;
   // INTERIM: shared-secret guard for admin endpoints until Phase-1 JWT auth lands.

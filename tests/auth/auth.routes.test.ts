@@ -123,4 +123,43 @@ describe("Module 2 — auth routes", () => {
     );
     expect(res.status).toBe(403);
   });
+
+  // Uses dummy finance creds — the REAL finance email/password live only in
+  // Cloudflare secrets, never in the repo.
+  const FIN_EMAIL = "finance-test@example";
+  const FIN_PASS = "finance-test-pass-123";
+
+  it("finance gate: rejects wrong creds, unlocks with correct creds", async () => {
+    env.FINANCE_EMAIL = FIN_EMAIL;
+    env.FINANCE_PASSWORD_HASH = await hashPassword(FIN_PASS, 10_000);
+    const login = await call(app, env, "/auth/login", { body: JSON.stringify({ email: "admin@pensa.gctu", password: "Sup3rSecret!pw" }) });
+    const at = cookieValue(login, "__Host-at")!;
+    const finLogin = (body: unknown) =>
+      app.fetch(new Request(`${ORIGIN}/auth/finance/login`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN, cookie: `__Host-at=${at}` }, body: JSON.stringify(body) }), env as never);
+
+    // wrong password → 401, no cookie
+    const bad = await finLogin({ email: FIN_EMAIL, password: "nope" });
+    expect(bad.status).toBe(401);
+    expect(cookieValue(bad, "__Host-fin")).toBeNull();
+
+    // correct creds → 200 + __Host-fin cookie
+    const ok = await finLogin({ email: FIN_EMAIL, password: FIN_PASS });
+    expect(ok.status).toBe(200);
+    const fin = cookieValue(ok, "__Host-fin")!;
+    expect(fin).toBeTruthy();
+
+    // status endpoint reflects the unlock
+    const status = await app.fetch(new Request(`${ORIGIN}/auth/finance/status`, { headers: { cookie: `__Host-fin=${fin}` } }), env as never);
+    expect(((await status.json()) as { unlocked: boolean }).unlocked).toBe(true);
+  });
+
+  it("finance gate: requires an authenticated admin to even attempt unlock", async () => {
+    env.FINANCE_EMAIL = FIN_EMAIL;
+    env.FINANCE_PASSWORD_HASH = await hashPassword(FIN_PASS, 10_000);
+    const res = await app.fetch(
+      new Request(`${ORIGIN}/auth/finance/login`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify({ email: FIN_EMAIL, password: FIN_PASS }) }),
+      env as never,
+    );
+    expect(res.status).toBe(401); // no admin session
+  });
 });

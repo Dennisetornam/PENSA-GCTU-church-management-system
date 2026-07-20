@@ -15,6 +15,8 @@ export interface TestEnv {
   JWT_SECRET: string;
   TURNSTILE_SECRET: string;
   ADMIN_API_TOKEN: string;
+  FINANCE_EMAIL?: string;
+  FINANCE_PASSWORD_HASH?: string;
   __r2: Map<string, { body: unknown; httpMetadata?: unknown }>;
 }
 

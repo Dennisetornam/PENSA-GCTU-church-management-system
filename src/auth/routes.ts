@@ -13,6 +13,8 @@ import { getUserByEmail, resolveScope, resolveScopeByUserId } from "./scope";
 import { getAuth } from "./context";
 import { AT_COOKIE, RT_COOKIE, authCookie, csrfCookie, clearCookie, readCookie } from "./cookies";
 import { randomToken } from "./crypto";
+import { can, type Role } from "../rbac/permissions";
+import { signFinanceToken, financeCookie, clearFinanceCookie, isFinanceUnlocked } from "./finance-gate";
 
 const AT_TTL = 900; // 15 min
 const RT_TTL = 2_592_000; // 30 days
@@ -139,6 +141,45 @@ app.post("/change-password", async (c) => {
   // sign out everywhere (revoke all refresh families)
   await c.env.DB.prepare("UPDATE refresh_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, auth.userId).run();
   await audit(c.env, "auth.password.changed", auth.userId, c.req.header("CF-Connecting-IP") ?? null, null);
+  return c.json({ ok: true });
+});
+
+// ── Finance step-up gate ───────────────────────────────────────────────────────
+// A second, confidential login guarding the Finance section. Requires an already
+// authenticated admin who holds finance:view, plus the finance credentials
+// (stored as secrets). On success, issues the short-lived __Host-fin cookie.
+const financeLoginSchema = z.object({ email: z.string().min(1).max(200), password: z.string().min(1).max(200) });
+
+app.post("/finance/login", rateLimit(LIMIT_RULES.login, { onViolation: auditViolation }), async (c) => {
+  if (!sameOrigin(c.req.raw)) return c.json({ error: "bad origin" }, 403);
+  const ip = c.req.header("CF-Connecting-IP") ?? null;
+  const ua = c.req.header("user-agent") ?? null;
+  const auth = await getAuth(c.req.raw, c.env.JWT_SECRET);
+  if (!auth) return c.json({ error: "unauthorized" }, 401);
+  if (!can(auth.role as Role, "finance:view")) return c.json({ error: "forbidden" }, 403);
+
+  const body = financeLoginSchema.parse(await c.req.json());
+  const expectedEmail = (c.env.FINANCE_EMAIL ?? "").trim().toLowerCase();
+  const hash = c.env.FINANCE_PASSWORD_HASH ?? "";
+  // Compute both checks regardless, and return a single generic error, so we
+  // don't reveal which field was wrong.
+  const emailOk = expectedEmail.length > 0 && body.email.trim().toLowerCase() === expectedEmail;
+  const passOk = hash.length > 0 && (await verifyPassword(body.password, hash));
+
+  if (!emailOk || !passOk) {
+    await audit(c.env, "finance.unlock.failure", auth.userId, ip, ua);
+    return c.json({ error: "invalid finance credentials" }, 401);
+  }
+  const token = await signFinanceToken(auth.userId, c.env.JWT_SECRET);
+  c.header("set-cookie", financeCookie(token), { append: true });
+  await audit(c.env, "finance.unlock.success", auth.userId, ip, ua);
+  return c.json({ ok: true });
+});
+
+app.get("/finance/status", async (c) => c.json({ unlocked: await isFinanceUnlocked(c.req.raw, c.env.JWT_SECRET) }));
+
+app.post("/finance/logout", async (c) => {
+  c.header("set-cookie", clearFinanceCookie(), { append: true });
   return c.json({ ok: true });
 });
 

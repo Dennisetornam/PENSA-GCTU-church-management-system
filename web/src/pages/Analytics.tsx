@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
-import { Crown, Wallet } from "lucide-react";
+import { Crown, Wallet, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useFinanceGate } from "../financeGate";
 import { Avatar, Spinner, Badge } from "../ui";
 import { SpiritualMilestones } from "./Milestones";
 
@@ -22,13 +24,14 @@ const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefin
 
 export function Analytics() {
   const { me } = useAuth();
+  const { unlocked } = useFinanceGate();
   const canFinance = me?.role === "super_admin" || me?.role === "church_admin";
   const summary = useQuery({ queryKey: ["a-summary"], queryFn: () => api.get<Summary>("/api/analytics/summary") });
   const cells = useQuery({ queryKey: ["a-cell"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=cell") });
   const depts = useQuery({ queryKey: ["a-dept"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=department") });
   const trend = useQuery({ queryKey: ["a-trend"], queryFn: () => api.get<Trend>("/api/analytics/attendance-trend?limit=12") });
   const personality = useQuery({ queryKey: ["a-personality"], queryFn: () => api.get<Personality>("/api/analytics/personality") });
-  const finance = useQuery({ queryKey: ["a-finance"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance });
+  const finance = useQuery({ queryKey: ["a-finance"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance && unlocked });
 
   const p = personality.data?.member;
   const fin = finance.data;
@@ -82,8 +85,17 @@ export function Analytics() {
         ))}
       </div>
 
-      {/* Finance performance */}
-      {canFinance && (
+      {/* Finance performance — hidden behind the confidential finance gate */}
+      {canFinance && !unlocked && (
+        <Link to="/dashboard/finance" className="card mb-5 flex items-center gap-4 p-6 transition hover:shadow-lift">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-vespers text-gold-soft"><Lock size={18} /></span>
+          <div>
+            <h3 className="font-display text-xl text-ink">Finance performance</h3>
+            <p className="text-sm text-ink-soft/65">Confidential · unlock the Finance section to view.</p>
+          </div>
+        </Link>
+      )}
+      {canFinance && unlocked && (
         <div className="card mb-5 p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h3 className="flex items-center gap-2 font-display text-xl text-ink"><Wallet size={18} className="text-gold" /> Finance performance</h3>

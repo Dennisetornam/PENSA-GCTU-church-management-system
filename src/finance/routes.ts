@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
+import { requireFinanceUnlock } from "../auth/finance-gate";
 import { detectImage, MAX_IMAGE_BYTES } from "../media/image";
 import { createEntry, updateEntry, getEntry, listEntries, summary, quotaByMonth, QUOTA_RATE, CATEGORIES, METHODS, PLEDGE_STATUSES, createExpense, updateExpense, getExpense, listExpenses } from "./repository";
 
@@ -13,6 +14,10 @@ app.onError((err, c) => {
   console.error("finance error", err);
   return c.json({ error: "internal_error" }, 500);
 });
+
+// Every finance endpoint is behind the confidential finance gate (in addition to
+// the per-route RBAC), so finance data is never reachable without the unlock.
+app.use("*", requireFinanceUnlock());
 
 const createSchema = z
   .object({

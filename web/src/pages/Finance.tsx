@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check, Upload, Paperclip, X, Pencil, Receipt, Minus } from "lucide-react";
+import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check, Upload, Paperclip, X, Pencil, Receipt, Minus, Lock } from "lucide-react";
 import { api, invalidateFinance } from "../api";
 import { resizeToFile } from "../imageResize";
+import { useFinanceGate } from "../financeGate";
 import { Spinner, Empty } from "../ui";
 
 const CATS = [
@@ -34,6 +35,7 @@ const EXPENSE_SUGGESTIONS = ["Refreshments", "Transport", "Logistics", "Equipmen
 
 export function Finance() {
   const qc = useQueryClient();
+  const { lock } = useFinanceGate();
   const { data: o } = useQuery({ queryKey: ["options"], queryFn: () => api.get<Options>("/register/options") });
   const { data: sum, isLoading } = useQuery({ queryKey: ["finance-summary"], queryFn: () => api.get<Summary>("/api/finance/summary") });
   const { data: list } = useQuery({ queryKey: ["finance-list"], queryFn: () => api.get<{ results: Entry[] }>("/api/finance?limit=50") });
@@ -53,6 +55,7 @@ export function Finance() {
           <p className="mt-2 text-ink-soft/70">Record what comes in, take out expenses, keep the actual figure.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button className="btn-ghost" onClick={() => lock()} title="Lock the finance section"><Lock size={16} /> Lock</button>
           <button className="btn-ghost" onClick={() => setExpenseOpen(true)}><Receipt size={16} /> Record expense</button>
           <button className="btn-gold" onClick={() => setOpen(true)}><Plus size={16} /> Record giving</button>
         </div>

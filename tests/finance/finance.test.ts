@@ -2,12 +2,15 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { financeRoutes } from "../../src/finance/routes";
 import { signAccessToken } from "../../src/auth/jwt";
+import { signFinanceToken } from "../../src/auth/finance-gate";
 import { makeTestEnv, type TestEnv } from "../helpers/env";
 
 let env: TestEnv;
 let app: Hono;
 let token: string;
-const auth = (t: string) => ({ authorization: `Bearer ${t}`, "content-type": "application/json" });
+let finCookie = ""; // the finance-gate unlock cookie, set per-test
+// Authorized requests carry both the admin bearer AND the finance unlock cookie.
+const auth = (t: string) => ({ authorization: `Bearer ${t}`, "content-type": "application/json", cookie: finCookie });
 
 beforeEach(async () => {
   env = makeTestEnv({ seed: true });
@@ -15,13 +18,18 @@ beforeEach(async () => {
   app.route("/api/finance", financeRoutes as never);
   await env.DB.prepare("INSERT INTO users (id, full_name, email, password_hash, role_id) VALUES ('u-sa','Treasurer','t@x','h','role_church_admin')").run();
   token = await signAccessToken({ sub: "u-sa", role: "church_admin", scope: { departments: [], cells: [] } }, env.JWT_SECRET);
+  finCookie = `__Host-fin=${await signFinanceToken("u-sa", env.JWT_SECRET)}`;
 });
 
 const rec = (body: unknown, t = token) => app.fetch(new Request("https://x/api/finance", { method: "POST", headers: auth(t), body: JSON.stringify(body) }), env as never);
 
 describe("Module 7b — finance", () => {
-  it("requires auth (401)", async () => {
-    expect((await app.fetch(new Request("https://x/api/finance"), env as never)).status).toBe(401);
+  it("is locked without the finance-gate cookie (403)", async () => {
+    // no cookie, no bearer → the finance gate blocks it
+    expect((await app.fetch(new Request("https://x/api/finance"), env as never)).status).toBe(403);
+    // valid admin bearer but no finance unlock → still blocked
+    const r = await app.fetch(new Request("https://x/api/finance", { headers: { authorization: `Bearer ${token}` } }), env as never);
+    expect(r.status).toBe(403);
   });
 
   it("forbids a cell_leader (403)", async () => {

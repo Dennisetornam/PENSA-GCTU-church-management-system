@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { Users, UserCheck, Sparkles, ArrowUpRight, Wallet } from "lucide-react";
+import { Users, UserCheck, Sparkles, ArrowUpRight, Wallet, Lock } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useFinanceGate } from "../financeGate";
 import { StatCard, Spinner, Badge } from "../ui";
 import { SpiritualMilestones } from "./Milestones";
 
@@ -17,11 +18,12 @@ const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefin
 
 export function Overview() {
   const { me } = useAuth();
+  const { unlocked } = useFinanceGate();
   const canFinance = me?.role === "super_admin" || me?.role === "church_admin";
   const summary = useQuery({ queryKey: ["summary"], queryFn: () => api.get<Summary>("/api/analytics/summary") });
   const cells = useQuery({ queryKey: ["dist-cell"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=cell") });
   const pending = useQuery({ queryKey: ["pending"], queryFn: () => api.get<Regs>("/api/registrations?status=pending") });
-  const coffers = useQuery({ queryKey: ["coffers"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance });
+  const coffers = useQuery({ queryKey: ["coffers"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance && unlocked });
 
   const s = summary.data;
   const hour = new Date().getHours();
@@ -56,12 +58,18 @@ export function Overview() {
           {canFinance && (
             <Link to="/dashboard/finance" className="card candlelight relative mt-5 flex items-center gap-5 overflow-hidden bg-vespers p-6 text-ivory-soft transition hover:shadow-lift">
               <div className="candlelight absolute inset-0 opacity-60" />
-              <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gold/15 text-gold-soft"><Wallet size={22} /></span>
+              <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gold/15 text-gold-soft">{unlocked ? <Wallet size={22} /> : <Lock size={20} />}</span>
               <div className="relative">
                 <div className="eyebrow !text-gold-soft">Actual in the church coffers</div>
-                <div className="mt-0.5 font-display text-4xl font-semibold text-ivory-soft">{coffers.isLoading ? <Spinner /> : cedis(coffers.data?.netMinor ?? 0)}</div>
-                {coffers.data && (coffers.data.expensesMinor > 0) && (
-                  <div className="mt-1 text-xs text-ivory-soft/55">{cedis(coffers.data.totalMinor)} received − {cedis(coffers.data.expensesMinor)} expenses</div>
+                {unlocked ? (
+                  <>
+                    <div className="mt-0.5 font-display text-4xl font-semibold text-ivory-soft">{coffers.isLoading ? <Spinner /> : cedis(coffers.data?.netMinor ?? 0)}</div>
+                    {coffers.data && (coffers.data.expensesMinor > 0) && (
+                      <div className="mt-1 text-xs text-ivory-soft/55">{cedis(coffers.data.totalMinor)} received − {cedis(coffers.data.expensesMinor)} expenses</div>
+                    )}
+                  </>
+                ) : (
+                  <div className="mt-0.5 font-display text-2xl font-semibold text-ivory-soft/90">Confidential · locked</div>
                 )}
               </div>
               <ArrowUpRight size={20} className="relative ml-auto text-ivory-soft/50" />
