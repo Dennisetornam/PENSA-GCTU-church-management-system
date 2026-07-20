@@ -160,7 +160,9 @@ app.post("/finance/login", rateLimit(LIMIT_RULES.login, { onViolation: auditViol
 
   const body = financeLoginSchema.parse(await c.req.json());
   const expectedEmail = (c.env.FINANCE_EMAIL ?? "").trim().toLowerCase();
-  const hash = c.env.FINANCE_PASSWORD_HASH ?? "";
+  // .trim() guards against a trailing newline the secret may have picked up when
+  // it was set (e.g. piped via a shell) — otherwise the hash would never match.
+  const hash = (c.env.FINANCE_PASSWORD_HASH ?? "").trim();
   // Compute both checks regardless, and return a single generic error, so we
   // don't reveal which field was wrong.
   const emailOk = expectedEmail.length > 0 && body.email.trim().toLowerCase() === expectedEmail;

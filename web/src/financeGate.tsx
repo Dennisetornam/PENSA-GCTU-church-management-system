@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { api, invalidateFinance } from "./api";
 import { Spinner } from "./ui";
 
@@ -40,6 +40,7 @@ export function FinanceGate({ children }: { children: ReactNode }) {
 function FinanceLogin({ onUnlocked }: { onUnlocked: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const m = useMutation({
     mutationFn: () => api.post("/auth/finance/login", { email: email.trim(), password }),
@@ -50,22 +51,27 @@ function FinanceLogin({ onUnlocked }: { onUnlocked: () => void }) {
 
   return (
     <div className="mx-auto max-w-md">
-      <div className="card candlelight relative overflow-hidden p-7">
+      <div className="card candlelight relative overflow-hidden p-5 sm:p-7">
         <div className="candlelight absolute inset-0 opacity-50" />
         <div className="relative">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-vespers text-gold-soft"><Lock size={22} /></div>
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-vespers text-gold-soft sm:h-12 sm:w-12"><Lock size={22} /></div>
           <div className="eyebrow mb-1.5">Confidential</div>
-          <h1 className="font-display text-3xl font-semibold text-ink">Finance is locked</h1>
+          <h1 className="font-display text-2xl font-semibold text-ink sm:text-3xl">Finance is locked</h1>
           <p className="mt-2 text-sm text-ink-soft/70">This section requires the finance passphrase. Enter the confidential finance credentials to continue.</p>
 
           <div className="mt-6 space-y-3">
             <div>
               <label className="label">Finance email</label>
-              <input className="field" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="finance sign-in" />
+              <input className="field" autoComplete="off" autoCapitalize="none" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="finance sign-in" />
             </div>
             <div>
               <label className="label">Finance password</label>
-              <input type="password" className="field" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="••••••••" />
+              <div className="relative">
+                <input type={show ? "text" : "password"} className="field pr-11" autoComplete="off" autoCapitalize="none" spellCheck={false} value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="••••••••" />
+                <button type="button" onClick={() => setShow((s) => !s)} tabIndex={-1} aria-label={show ? "Hide password" : "Show password"} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-ink-soft/50 transition hover:text-ink">
+                  {show ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </div>
             </div>
             {err && <div className="rounded-xl border border-clay/30 bg-clay/8 px-3 py-2 text-sm text-clay">{err}</div>}
             <button className="btn-gold w-full" disabled={!email.trim() || !password || m.isPending} onClick={submit}>
