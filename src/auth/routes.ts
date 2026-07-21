@@ -15,6 +15,7 @@ import { AT_COOKIE, RT_COOKIE, authCookie, csrfCookie, clearCookie, readCookie }
 import { randomToken } from "./crypto";
 import { can, type Role } from "../rbac/permissions";
 import { signFinanceToken, financeCookie, clearFinanceCookie, isFinanceUnlocked } from "./finance-gate";
+import { loginIdentifier } from "./identifier";
 
 const AT_TTL = 900; // 15 min
 const RT_TTL = 2_592_000; // 30 days
@@ -22,7 +23,7 @@ const MAX_FAILS = 5;
 const LOCK_MS = 15 * 60 * 1000;
 
 const loginSchema = z.object({
-  email: z.string().email().transform((s) => s.trim().toLowerCase()),
+  email: loginIdentifier,
   password: z.string().min(1),
 });
 

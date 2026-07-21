@@ -8,6 +8,7 @@ import type { Env, Variables } from "../types";
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 import { authorize } from "../auth/context";
 import { hashPassword } from "../auth/password";
+import { loginIdentifier } from "../auth/identifier";
 
 const ROLE_ID: Record<string, string> = {
   super_admin: "role_super_admin",
@@ -45,7 +46,7 @@ app.get("/", async (c) => {
 
 const createSchema = z.object({
   fullName: z.string().trim().min(2).max(80),
-  email: z.string().email().transform((s) => s.trim().toLowerCase()),
+  email: loginIdentifier,
   password: z.string().min(12).max(128),
   role: roleSchema,
 });

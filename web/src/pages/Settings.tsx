@@ -113,7 +113,13 @@ function AddUser({ onClose, onDone }: { onClose: () => void; onDone: () => void 
   const m = useMutation({
     mutationFn: () => api.post("/api/users", f),
     onSuccess: onDone,
-    onError: (e: Error) => setErr(e.message),
+    onError: (e: Error) => setErr(
+      e.message === "validation_failed"
+        ? "Check the fields: name (2+ letters), email/username with no spaces, password 12+ characters."
+        : e.message === "a user with that email already exists"
+          ? "A team member with that email/username already exists."
+          : e.message,
+    ),
   });
   const [err, setErr] = useState<string | null>(null);
   return (
@@ -122,7 +128,7 @@ function AddUser({ onClose, onDone }: { onClose: () => void; onDone: () => void 
         <h3 className="mb-4 font-display text-xl text-ink">Add a team member</h3>
         <div className="space-y-3">
           <div><label className="label">Full name</label><input className="field" value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></div>
-          <div><label className="label">Email</label><input type="email" className="field" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div><label className="label">Email or username</label><input type="text" autoCapitalize="none" spellCheck={false} className="field" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="e.g. media@pensagctu.org" /></div>
           <div><label className="label">Role</label>
             <select className="field" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
               {ROLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
