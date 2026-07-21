@@ -1,4 +1,24 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode, type InputHTMLAttributes } from "react";
+import { Eye, EyeOff } from "lucide-react";
+
+/** Password input with a built-in show/hide toggle. Spreads any input props. */
+export function PasswordInput({ className = "", ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input {...props} type={show ? "text" : "password"} autoCapitalize="none" spellCheck={false} className={`field pr-11 ${className}`} />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        tabIndex={-1}
+        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute inset-y-0 right-0 grid w-11 place-items-center text-ink-soft/50 transition hover:text-ink"
+      >
+        {show ? <EyeOff size={17} /> : <Eye size={17} />}
+      </button>
+    </div>
+  );
+}
 
 export function Spinner({ className = "" }: { className?: string }) {
   return (

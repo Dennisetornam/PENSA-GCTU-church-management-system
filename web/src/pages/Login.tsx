@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { useAuth } from "../auth";
 import { Logo, Wordmark } from "../brand";
-import { Spinner } from "../ui";
+import { Spinner, PasswordInput } from "../ui";
 
 export function Login() {
   const { login } = useAuth();
@@ -75,14 +75,14 @@ export function Login() {
 
           <form onSubmit={submit} className="mt-8 space-y-4">
             <div>
-              <label className="label" htmlFor="email">Email</label>
-              <input id="email" type="email" autoComplete="username" required value={email}
+              <label className="label" htmlFor="email">Email or username</label>
+              <input id="email" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} required value={email}
                 onChange={(e) => setEmail(e.target.value)} className="field" placeholder="you@pensagctu.org" />
             </div>
             <div>
               <label className="label" htmlFor="password">Password</label>
-              <input id="password" type="password" autoComplete="current-password" required value={password}
-                onChange={(e) => setPassword(e.target.value)} className="field" placeholder="••••••••••" />
+              <PasswordInput id="password" autoComplete="current-password" required value={password}
+                onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••" />
             </div>
             {err && <div className="rounded-xl border border-clay/30 bg-clay/8 px-3.5 py-2.5 text-sm text-clay">{err}</div>}
             <button type="submit" disabled={busy} className="btn-gold w-full !py-3">

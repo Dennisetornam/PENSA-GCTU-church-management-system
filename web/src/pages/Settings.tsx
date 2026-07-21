@@ -4,7 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { KeyRound, Users2, QrCode, Copy, ExternalLink, ShieldCheck, UserPlus, Ban, RotateCcw, Check } from "lucide-react";
 import { api } from "../api";
 import { useAuth, roleLabel } from "../auth";
-import { Spinner, Badge, Avatar } from "../ui";
+import { Spinner, Badge, Avatar, PasswordInput } from "../ui";
 
 const TABS = [
   { key: "account", label: "Account", icon: KeyRound },
@@ -53,9 +53,9 @@ function ChangePassword() {
       <h3 className="mb-1 font-display text-xl text-ink">Change password</h3>
       <p className="mb-5 text-sm text-ink-soft/65">Use at least 12 characters.</p>
       <div className="space-y-4">
-        <div><label className="label">Current password</label><input type="password" className="field" value={cur} onChange={(e) => setCur(e.target.value)} /></div>
-        <div><label className="label">New password</label><input type="password" className="field" value={next} onChange={(e) => setNext(e.target.value)} /></div>
-        <div><label className="label">Confirm new password</label><input type="password" className="field" value={conf} onChange={(e) => setConf(e.target.value)} /></div>
+        <div><label className="label">Current password</label><PasswordInput autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} /></div>
+        <div><label className="label">New password</label><PasswordInput autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} /></div>
+        <div><label className="label">Confirm new password</label><PasswordInput autoComplete="new-password" value={conf} onChange={(e) => setConf(e.target.value)} /></div>
         {mismatch && <div className="text-sm text-clay">Passwords don't match.</div>}
         {msg && <div className={`rounded-xl px-3.5 py-2.5 text-sm ${msg.ok ? "bg-sage/12 text-[#4d5645]" : "border border-clay/30 bg-clay/8 text-clay"}`}>{msg.text}</div>}
         <button className="btn-gold w-full" disabled={!cur || next.length < 12 || mismatch || m.isPending} onClick={() => m.mutate()}>
@@ -134,7 +134,7 @@ function AddUser({ onClose, onDone }: { onClose: () => void; onDone: () => void 
               {ROLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
-          <div><label className="label">Temporary password (min 12 chars)</label><input className="field" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div><label className="label">Temporary password (min 12 chars)</label><PasswordInput autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
           {err && <div className="rounded-xl border border-clay/30 bg-clay/8 px-3 py-2 text-sm text-clay">{err}</div>}
           <div className="flex gap-2 pt-2">
             <button className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
