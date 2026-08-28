@@ -4,6 +4,7 @@
 export interface MemberListParams {
   q?: string;
   status?: string;
+  gender?: string;
   cellId?: string;
   departmentId?: string;
   page?: number;
@@ -26,6 +27,10 @@ export async function listMembers(db: D1Database, p: MemberListParams): Promise<
   if (p.status) {
     where.push("m.membership_status = ?");
     args.push(p.status);
+  }
+  if (p.gender) {
+    where.push("m.gender = ?");
+    args.push(p.gender);
   }
   if (p.cellId) {
     where.push("m.cell_id = ?");
@@ -50,7 +55,7 @@ export async function listMembers(db: D1Database, p: MemberListParams): Promise<
   const { results } = await db
     .prepare(
       `SELECT m.id, m.member_code, m.full_name, m.phone_number, m.whatsapp_number, m.cell_id,
-              m.membership_status, m.profile_picture_key, m.created_at
+              m.gender, m.membership_status, m.profile_picture_key, m.created_at
        FROM members m WHERE ${whereSql}
        ORDER BY m.last_name, m.first_name
        LIMIT ? OFFSET ?`,

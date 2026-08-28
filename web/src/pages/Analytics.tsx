@@ -32,6 +32,7 @@ export function Analytics() {
   const trend = useQuery({ queryKey: ["a-trend"], queryFn: () => api.get<Trend>("/api/analytics/attendance-trend?limit=12") });
   const personality = useQuery({ queryKey: ["a-personality"], queryFn: () => api.get<Personality>("/api/analytics/personality") });
   const finance = useQuery({ queryKey: ["a-finance"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance && unlocked });
+  const gender = useQuery({ queryKey: ["a-gender"], queryFn: () => api.get<{ male: number; female: number; unspecified: number; total: number }>("/api/analytics/gender") });
 
   const p = personality.data?.member;
   const fin = finance.data;
@@ -165,6 +166,38 @@ export function Analytics() {
             <ul className="space-y-2 text-sm">
               {(cells.data?.results ?? []).map((c, i) => (
                 <li key={c.id} className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: PALETTE[i % PALETTE.length] }} /><span className="font-medium text-ink">{c.name}</span><span className="text-ink-soft/55">{c.count}</span></li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Gender split */}
+        <div className="card p-6">
+          <h3 className="mb-2 font-display text-xl text-ink">Gender</h3>
+          <div className="flex items-center gap-6">
+            <div className="h-48 w-48">
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Male", value: gender.data?.male ?? 0 },
+                      { name: "Female", value: gender.data?.female ?? 0 },
+                      { name: "Unspecified", value: gender.data?.unspecified ?? 0 },
+                    ].filter((d) => d.value > 0)}
+                    dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3} stroke="none"
+                  >
+                    {["#2A2247", "#C39A4A", "#B8B0C0"].map((c, i) => <Cell key={i} fill={c} />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <ul className="space-y-2 text-sm">
+              {[["Male", gender.data?.male ?? 0, "#2A2247"], ["Female", gender.data?.female ?? 0, "#C39A4A"], ["Unspecified", gender.data?.unspecified ?? 0, "#B8B0C0"]].map(([label, count, color]) => (
+                <li key={label as string} className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: color as string }} />
+                  <span className="font-medium text-ink">{label}</span>
+                  <span className="text-ink-soft/55">{count}</span>
+                </li>
               ))}
             </ul>
           </div>

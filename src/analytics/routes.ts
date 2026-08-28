@@ -2,7 +2,7 @@
 import { Hono } from "hono";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
-import { getSummary, getDistribution, getBaptism, getUnbaptized, getAttendanceTrend, getGrowth, getPersonalityOfWeek } from "./repository";
+import { getSummary, getDistribution, getBaptism, getUnbaptized, getGenderBreakdown, getNextBirthday, getAttendanceTrend, getGrowth, getPersonalityOfWeek } from "./repository";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -20,6 +20,12 @@ app.get("/distribution", authorize("analytics:view"), async (c) => {
 });
 
 app.get("/baptism", authorize("analytics:view"), async (c) => c.json(await getBaptism(c.env.DB)));
+
+// Gender split across approved members.
+app.get("/gender", authorize("analytics:view"), async (c) => c.json(await getGenderBreakdown(c.env.DB)));
+
+// The soonest upcoming birthday(s) — for the Overview alert.
+app.get("/next-birthday", authorize("analytics:view"), async (c) => c.json({ next: await getNextBirthday(c.env.DB) }));
 
 // Members yet to receive a baptism (type = holy_ghost | water).
 app.get("/unbaptized", authorize("analytics:view"), async (c) => {

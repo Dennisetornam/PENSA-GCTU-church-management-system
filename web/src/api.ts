@@ -70,6 +70,16 @@ async function uploadRequest<T>(path: string, form: FormData, retried = false): 
   return (await res.json()) as T;
 }
 
+// Fetch a file (e.g. an .xlsx export) as a Blob, with the same refresh-and-retry.
+async function downloadRequest(path: string, retried = false): Promise<Blob> {
+  const res = await fetch(path, { credentials: "include" });
+  if (res.status === 401 && !retried && !path.startsWith("/auth/")) {
+    if (await refreshSession()) return downloadRequest(path, true);
+  }
+  if (!res.ok) throw new ApiError(res.status, res.statusText);
+  return res.blob();
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : "{}" }),
@@ -78,6 +88,15 @@ export const api = {
     const fd = new FormData();
     fd.append("file", file);
     return uploadRequest<T>(path, fd);
+  },
+  // Download a file blob and save it with the given filename.
+  async download(path: string, filename: string) {
+    const blob = await downloadRequest(path);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   },
 };
 

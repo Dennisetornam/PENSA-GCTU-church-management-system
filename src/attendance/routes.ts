@@ -9,8 +9,9 @@ import { LIMIT_RULES } from "../rate-limit/config";
 const rl = { onViolation: auditViolation };
 import {
   createSession, listSessions, getSession, getRoster, markAttendance, closeSession,
-  checkInByQr, getMemberAttendance, NotFoundError, ConflictError,
+  checkInByQr, getMemberAttendance, getSessionAbsentees, NotFoundError, ConflictError,
 } from "./repository";
+import { toXlsxSheets } from "../reports/format";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -80,6 +81,45 @@ app.post("/check-in", authorize("attendance:record"), rateLimit(LIMIT_RULES.chec
 
 app.get("/members/:id", authorize("attendance:read"), async (c) => {
   return c.json(await getMemberAttendance(c.env.DB, c.req.param("id")));
+});
+
+// Absentees for a session, grouped by cell. ?format=xlsx exports a workbook with
+// one sheet per cell.
+app.get("/sessions/:id/absentees", authorize("attendance:read"), async (c) => {
+  const rows = await getSessionAbsentees(c.env.DB, c.req.param("id"));
+
+  if (c.req.query("format") === "xlsx") {
+    const byCell = new Map<string, typeof rows>();
+    for (const r of rows) {
+      const list = byCell.get(r.cell_name) ?? [];
+      list.push(r);
+      byCell.set(r.cell_name, list);
+    }
+    const columns = [
+      { key: "full_name", label: "Name" },
+      { key: "member_code", label: "Member ID" },
+      { key: "phone_number", label: "Phone" },
+      { key: "cell_name", label: "Cell" },
+    ];
+    const sheets = [...byCell.entries()].map(([name, list]) => ({ name, columns, rows: list as unknown as Record<string, unknown>[] }));
+    const buf = toXlsxSheets(sheets);
+    return new Response(buf, {
+      headers: {
+        "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "content-disposition": `attachment; filename="absentees-by-cell.xlsx"`,
+      },
+    });
+  }
+
+  // JSON: grouped by cell
+  const groups: { cell_id: string | null; cell_name: string; members: typeof rows }[] = [];
+  const index = new Map<string, number>();
+  for (const r of rows) {
+    let i = index.get(r.cell_name);
+    if (i === undefined) { i = groups.length; index.set(r.cell_name, i); groups.push({ cell_id: r.cell_id, cell_name: r.cell_name, members: [] }); }
+    groups[i]!.members.push(r);
+  }
+  return c.json({ total: rows.length, groups });
 });
 
 export const attendanceRoutes = app;

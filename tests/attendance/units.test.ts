@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { signMemberQr, verifyMemberQr } from "../../src/attendance/qr";
 import {
-  createSession, markAttendance, closeSession, checkInByQr, getMemberAttendance, NotFoundError, ConflictError,
+  createSession, markAttendance, closeSession, checkInByQr, getMemberAttendance, getSessionAbsentees, NotFoundError, ConflictError,
 } from "../../src/attendance/repository";
 import { makeTestEnv, type TestEnv } from "../helpers/env";
 
@@ -108,6 +108,19 @@ describe("Module 6 — sessions & marking", () => {
     // revoke: bump qr_version → old token invalid
     env.DB.__raw.exec("UPDATE members SET qr_version = 2 WHERE id='m1'");
     await expect(checkInByQr(env.DB as never, id, token, env.JWT_SECRET)).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("session absentees = approved members with no present/late record, tagged by cell", async () => {
+    // m1-m4 are in cell_dunamis; add m5 in cell_moriah
+    await env.DB.prepare("INSERT INTO members (id, first_name, last_name, phone_number, cell_id, registration_status) VALUES ('m5','Fifth','P','+233200000005','cell_moriah','approved')").run();
+    const { id } = await createSession(env.DB as never, { gatheringTypeId: "gt_sunday", sessionDate: "2026-06-07" });
+    await markAttendance(env.DB as never, id, [{ memberId: "m1", status: "present" }, { memberId: "m2", status: "late" }], "manual", null);
+
+    const abs = await getSessionAbsentees(env.DB as never, id);
+    // present/late excluded → m3, m4 (Dunamis) and m5 (Moriah) remain
+    expect(abs.map((r) => r.id).sort()).toEqual(["m3", "m4", "m5"]);
+    expect(abs.find((r) => r.id === "m5")?.cell_name).toBe("Moriah");
+    expect(abs.find((r) => r.id === "m3")?.cell_name).toBe("Dunamis");
   });
 
   it("member attendance trend aggregates attended gatherings", async () => {

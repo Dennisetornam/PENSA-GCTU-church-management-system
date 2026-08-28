@@ -19,10 +19,13 @@ function useDebounced<T>(v: T, ms = 220) {
   return x;
 }
 
+const GENDERS: [string, string][] = [["", "All"], ["male", "Male"], ["female", "Female"]];
+
 export function Members() {
   const [q, setQ] = useState("");
+  const [gender, setGender] = useState("");
   const dq = useDebounced(q);
-  const { data, isLoading } = useQuery({ queryKey: ["members", dq], queryFn: () => api.get<{ results: Row[]; total: number }>(`/api/members?q=${encodeURIComponent(dq)}&limit=50`) });
+  const { data, isLoading } = useQuery({ queryKey: ["members", dq, gender], queryFn: () => api.get<{ results: Row[]; total: number }>(`/api/members?q=${encodeURIComponent(dq)}${gender ? `&gender=${gender}` : ""}&limit=50`) });
   const rows = data?.results ?? [];
 
   return (
@@ -40,7 +43,13 @@ export function Members() {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, phone or member ID…" className="w-full bg-transparent py-2 text-ink outline-none placeholder:text-ink/30" />
       </div>
 
-      {dq && rows.length > 0 && <BulkMessageBar recipients={rows} context={`“${dq}” · ${rows.length} shown`} />}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {GENDERS.map(([v, l]) => (
+          <button key={v} onClick={() => setGender(v)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${gender === v ? "border-gold bg-gold/12 text-[#8a6a25]" : "border-ink/15 text-ink-soft/70 hover:border-ink/30"}`}>{l}</button>
+        ))}
+      </div>
+
+      {(dq || gender) && rows.length > 0 && <BulkMessageBar recipients={rows} context={`${[gender && GENDERS.find(([v]) => v === gender)?.[1], dq && `“${dq}”`].filter(Boolean).join(" · ")} · ${rows.length} shown`} />}
 
       {isLoading ? (
         <div className="grid h-24 place-items-center text-ink-soft/50"><Spinner /></div>

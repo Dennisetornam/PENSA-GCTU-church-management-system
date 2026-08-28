@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { Users, UserCheck, Sparkles, ArrowUpRight, Wallet, Lock } from "lucide-react";
+import { Users, UserCheck, Sparkles, ArrowUpRight, Wallet, Lock, Cake } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { useFinanceGate } from "../financeGate";
@@ -12,6 +12,9 @@ interface Summary { total: number; actualMembers: number; visitors: number; asso
 interface Dist { results: { id: string; name: string; count: number }[]; }
 interface Regs { results: { id: string }[]; }
 interface FinanceSummary { byCategory: Record<string, { total_minor: number; n: number }>; totalMinor: number; expensesMinor: number; netMinor: number; }
+interface NextBirthday { next: { daysAway: number; date: string; members: { id: string; full_name: string; member_code: string | null }[] } | null; }
+const MONTHS_SHORT = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const bdayLabel = (d: number) => (d === 0 ? "today 🎉" : d === 1 ? "tomorrow" : `in ${d} days`);
 
 const DONUT = ["#C39A4A", "#6E7A63", "#BC6A45", "#2A2247"];
 const cedis = (minor: number) => "GH₵ " + (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -24,6 +27,8 @@ export function Overview() {
   const cells = useQuery({ queryKey: ["dist-cell"], queryFn: () => api.get<Dist>("/api/analytics/distribution?dimension=cell") });
   const pending = useQuery({ queryKey: ["pending"], queryFn: () => api.get<Regs>("/api/registrations?status=pending") });
   const coffers = useQuery({ queryKey: ["coffers"], queryFn: () => api.get<FinanceSummary>("/api/finance/summary"), enabled: canFinance && unlocked });
+  const birthday = useQuery({ queryKey: ["next-birthday"], queryFn: () => api.get<NextBirthday>("/api/analytics/next-birthday") });
+  const nb = birthday.data?.next;
 
   const s = summary.data;
   const hour = new Date().getHours();
@@ -43,6 +48,21 @@ export function Overview() {
           )}
         </Link>
       </header>
+
+      {nb && nb.daysAway <= 30 && (
+        <Link to="/dashboard/birthdays" className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-gold/30 bg-gold/[0.08] px-4 py-3 transition hover:bg-gold/[0.12]">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gold/20 text-[#8a6a25]"><Cake size={18} /></span>
+          <div className="min-w-0 text-sm">
+            <span className="font-semibold text-ink">Next birthday {bdayLabel(nb.daysAway)}</span>
+            <span className="text-ink-soft/70">
+              {" — "}
+              {nb.members.length === 1 ? nb.members[0]!.full_name : `${nb.members[0]!.full_name} & ${nb.members.length - 1} more`}
+              {" on "}{MONTHS_SHORT[Number(nb.date.slice(0, 2))]} {Number(nb.date.slice(3, 5))}
+            </span>
+          </div>
+          <ArrowUpRight size={16} className="ml-auto text-ink-soft/40" />
+        </Link>
+      )}
 
       {summary.isLoading ? (
         <div className="grid h-40 place-items-center text-ink-soft/50"><Spinner /></div>

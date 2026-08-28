@@ -221,6 +221,24 @@ export async function closeSession(db: D1Database, sessionId: string): Promise<v
   await db.prepare("UPDATE attendance_sessions SET status='closed', updated_at=? WHERE id=?").bind(now, sessionId).run();
 }
 
+/** Absentees for a session (approved members with no present/late/excused record),
+ *  each tagged with their cell. Sparse storage: no record = absent. */
+export async function getSessionAbsentees(db: D1Database, sessionId: string) {
+  const { results } = await db
+    .prepare(
+      `SELECT m.id, m.member_code, m.full_name, m.phone_number, m.whatsapp_number,
+              m.cell_id, COALESCE(c.name, 'Unassigned') AS cell_name
+       FROM members m
+       LEFT JOIN cells c ON c.id = m.cell_id
+       LEFT JOIN attendance_records ar ON ar.member_id = m.id AND ar.session_id = ?
+       WHERE m.deleted_at IS NULL AND m.registration_status = 'approved' AND ar.id IS NULL
+       ORDER BY cell_name COLLATE NOCASE, m.full_name COLLATE NOCASE`,
+    )
+    .bind(sessionId)
+    .all<{ id: string; member_code: string | null; full_name: string; phone_number: string; whatsapp_number: string | null; cell_id: string | null; cell_name: string }>();
+  return results ?? [];
+}
+
 export async function getMemberAttendance(db: D1Database, memberId: string) {
   // Attended = checked in as present or late. Computed straight from the records
   // (not the close-only monthly rollup) so open sessions count too.

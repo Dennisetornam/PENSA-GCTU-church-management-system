@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock, Wallet, Undo2 } from "lucide-react";
+import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock, Wallet, Undo2, UserX, Download, X } from "lucide-react";
 import { api, invalidateFinance } from "../api";
 import { Spinner, Badge, Empty, Avatar } from "../ui";
 import { RecordModal, type Options as FinanceOptions } from "./Finance";
@@ -90,10 +90,14 @@ function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
+interface AbsenteeRow { id: string; member_code: string | null; full_name: string; phone_number: string; }
+interface AbsenteeGroups { total: number; groups: { cell_id: string | null; cell_name: string; members: AbsenteeRow[] }[]; }
+
 function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [giving, setGiving] = useState(false);
+  const [absentees, setAbsentees] = useState(false);
   const dq = useDebounced(q);
   const session = useQuery({ queryKey: ["session", sessionId], queryFn: () => api.get<{ gathering_type_id: string; session_date: string; status: string; summary: unknown }>(`/api/attendance/sessions/${sessionId}`) });
   const options = useQuery({ queryKey: ["options"], queryFn: () => api.get<FinanceOptions>("/register/options") });
@@ -153,7 +157,8 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
           <div className="eyebrow mb-1.5">{gatheringName} · {session.data?.session_date}</div>
           <h1 className="font-display text-3xl font-semibold text-ink">Check members in</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setAbsentees(true)} className="btn-ghost"><UserX size={16} /> Absentees</button>
           {open && (
             <button onClick={() => setGiving(true)} className="btn-gold"><Wallet size={16} /> Record giving</button>
           )}
@@ -162,6 +167,8 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
           </button>
         </div>
       </header>
+
+      {absentees && <AbsenteesModal sessionId={sessionId} label={`${gatheringName} · ${session.data?.session_date}`} onClose={() => setAbsentees(false)} />}
 
       {giving && options.data && session.data && (
         <RecordModal
@@ -214,6 +221,67 @@ function CheckIn({ sessionId, onBack }: { sessionId: string; onBack: () => void 
           })}
         </ul>
       )}
+    </div>
+  );
+}
+
+function AbsenteesModal({ sessionId, label, onClose }: { sessionId: string; label: string; onClose: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const { data, isLoading } = useQuery({ queryKey: ["absentees", sessionId], queryFn: () => api.get<AbsenteeGroups>(`/api/attendance/sessions/${sessionId}/absentees`) });
+  const groups = data?.groups ?? [];
+
+  const exportXlsx = async () => {
+    setBusy(true);
+    try { await api.download(`/api/attendance/sessions/${sessionId}/absentees?format=xlsx`, "absentees-by-cell.xlsx"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-vespers-deep/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="card flex max-h-[85vh] w-full max-w-lg flex-col p-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 border-b border-ink/10 px-5 py-4">
+          <div className="min-w-0">
+            <div className="eyebrow mb-0.5">Absentees by cell</div>
+            <h3 className="truncate font-display text-xl text-ink">{label}</h3>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {!isLoading && <span className="rounded-full bg-clay/12 px-2.5 py-1 text-sm font-semibold text-clay">{data?.total ?? 0}</span>}
+            <button onClick={onClose} className="rounded-lg p-1.5 text-ink-soft/55 hover:bg-ink/5 hover:text-ink"><X size={18} /></button>
+          </div>
+        </div>
+
+        <div className="border-b border-ink/10 px-5 py-3">
+          <button onClick={exportXlsx} disabled={busy || (data?.total ?? 0) === 0} className="btn-gold !py-2 text-sm">{busy ? <Spinner /> : <><Download size={15} /> Export Excel (per cell)</>}</button>
+        </div>
+
+        <div className="overflow-y-auto p-4">
+          {isLoading ? (
+            <div className="grid h-32 place-items-center text-ink-soft/50"><Spinner /></div>
+          ) : groups.length === 0 ? (
+            <Empty title="No absentees" sub="Everyone approved is checked in for this session." />
+          ) : (
+            <div className="space-y-5">
+              {groups.map((g) => (
+                <div key={g.cell_name}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <h4 className="font-display text-lg text-ink">{g.cell_name}</h4>
+                    <span className="rounded-full bg-ink/[0.06] px-2 py-0.5 text-xs font-semibold text-ink-soft/70">{g.members.length}</span>
+                  </div>
+                  <ul className="divide-y divide-ink/[0.06]">
+                    {g.members.map((m) => (
+                      <li key={m.id} className="flex items-center gap-3 py-2 text-sm">
+                        <span className="grid h-7 w-7 place-items-center rounded-lg bg-clay/12 text-clay"><UserX size={14} /></span>
+                        <span className="min-w-0 flex-1 truncate font-medium text-ink">{m.full_name}</span>
+                        <span className="shrink-0 text-ink-soft/55">{m.member_code ?? m.phone_number}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -84,6 +84,54 @@ export async function getBaptism(db: D1Database) {
   return { total, holyGhost, water, holyGhostPct: pct(holyGhost), waterPct: pct(water) };
 }
 
+/** Gender split across approved members. */
+export async function getGenderBreakdown(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT COALESCE(gender, 'unspecified') AS gender, count(*) AS c
+       FROM members WHERE deleted_at IS NULL AND registration_status='approved'
+       GROUP BY COALESCE(gender, 'unspecified')`,
+    )
+    .all<{ gender: string; c: number }>();
+  const out = { male: 0, female: 0, unspecified: 0, total: 0 };
+  for (const r of results ?? []) {
+    if (r.gender === "male") out.male = r.c;
+    else if (r.gender === "female") out.female = r.c;
+    else out.unspecified += r.c;
+    out.total += r.c;
+  }
+  return out;
+}
+
+/** The soonest upcoming birthday(s) among approved members. */
+export async function getNextBirthday(db: D1Database, now: Date = new Date()) {
+  const { results } = await db
+    .prepare(
+      `SELECT id, member_code, full_name, date_of_birth FROM members
+       WHERE deleted_at IS NULL AND registration_status='approved'
+         AND date_of_birth IS NOT NULL AND length(date_of_birth) >= 10`,
+    )
+    .all<{ id: string; member_code: string | null; full_name: string; date_of_birth: string }>();
+
+  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  let bestDays = Infinity;
+  let bestDate = "";
+  let group: typeof results = [];
+  for (const r of results ?? []) {
+    const mm = Number(r.date_of_birth.slice(5, 7));
+    const dd = Number(r.date_of_birth.slice(8, 10));
+    if (!mm || !dd) continue;
+    let next = Date.UTC(now.getUTCFullYear(), mm - 1, dd);
+    if (next < todayUTC) next = Date.UTC(now.getUTCFullYear() + 1, mm - 1, dd);
+    const days = Math.round((next - todayUTC) / 86_400_000);
+    if (days < bestDays) { bestDays = days; bestDate = r.date_of_birth.slice(5); group = [r]; }
+    else if (days === bestDays) group!.push(r);
+  }
+  if (bestDays === Infinity) return null;
+  group!.sort((a, b) => a.full_name.localeCompare(b.full_name));
+  return { daysAway: bestDays, date: bestDate, members: group };
+}
+
 /** Approved members who have NOT yet received the given baptism. */
 export async function getUnbaptized(db: D1Database, type: "holy_ghost" | "water") {
   const col = type === "water" ? "water_baptism" : "holy_ghost_baptism";

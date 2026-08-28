@@ -76,6 +76,7 @@ app.get("/members", authorize("members:read"), async (c) => {
   const data = await listMembers(c.env.DB, {
     q: c.req.query("q"),
     status: c.req.query("status"),
+    gender: c.req.query("gender"),
     cellId: c.req.query("cellId"),
     departmentId: c.req.query("departmentId"),
     page: Number(c.req.query("page") ?? "1"),

@@ -1,23 +1,24 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
-  getSummary, getDistribution, getBaptism, getUnbaptized, getAttendanceTrend, getGrowth, buildMembershipSnapshot, getPersonalityOfWeek,
+  getSummary, getDistribution, getBaptism, getUnbaptized, getGenderBreakdown, getNextBirthday, getAttendanceTrend, getGrowth, buildMembershipSnapshot, getPersonalityOfWeek,
 } from "../../src/analytics/repository";
 import { createSession, markAttendance, closeSession } from "../../src/attendance/repository";
 import { makeTestEnv, type TestEnv } from "../helpers/env";
 
 const NOW = new Date("2026-06-04T12:00:00Z");
+const NOW2 = new Date("2026-07-03T12:00:00Z");
 
 async function addMember(
   env: TestEnv,
   id: string,
-  opts: { status?: string; hgb?: number; wb?: number; residence?: string; cell?: string; programme?: string; approvedAt?: string },
+  opts: { status?: string; hgb?: number; wb?: number; residence?: string; cell?: string; programme?: string; approvedAt?: string; gender?: string; dob?: string },
 ) {
   await env.DB.prepare(
     `INSERT INTO members (id, first_name, last_name, phone_number, membership_status, holy_ghost_baptism, water_baptism,
-       residence_status, cell_id, programme_id, registration_status, approved_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?, 'approved', ?)`,
+       residence_status, cell_id, programme_id, gender, date_of_birth, registration_status, approved_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'approved', ?)`,
   ).bind(id, id, "X", `+2332000${id}`, opts.status ?? "visitor", opts.hgb ?? 0, opts.wb ?? 0,
-    opts.residence ?? "non_resident", opts.cell ?? null, opts.programme ?? null, opts.approvedAt ?? null).run();
+    opts.residence ?? "non_resident", opts.cell ?? null, opts.programme ?? null, opts.gender ?? null, opts.dob ?? null, opts.approvedAt ?? null).run();
 }
 
 let env: TestEnv;
@@ -69,6 +70,30 @@ describe("Module 7 — analytics", () => {
     expect(b.holyGhost).toBe(2);
     expect(b.holyGhostPct).toBe(50);
     expect(b.waterPct).toBe(25);
+  });
+
+  it("gender breakdown counts male/female/unspecified", async () => {
+    await addMember(env, "1", { gender: "male" });
+    await addMember(env, "2", { gender: "male" });
+    await addMember(env, "3", { gender: "female" });
+    await addMember(env, "4", {}); // no gender → unspecified
+    const g = await getGenderBreakdown(env.DB as never);
+    expect(g.male).toBe(2);
+    expect(g.female).toBe(1);
+    expect(g.unspecified).toBe(1);
+    expect(g.total).toBe(4);
+  });
+
+  it("next birthday finds the soonest upcoming, grouping ties", async () => {
+    // "now" = 2026-07-03
+    await addMember(env, "1", { dob: "2000-07-05" }); // 2 days
+    await addMember(env, "2", { dob: "1999-07-05" }); // 2 days (tie)
+    await addMember(env, "3", { dob: "2001-07-20" }); // 17 days
+    await addMember(env, "4", { dob: "2002-01-10" }); // next year
+    const nb = await getNextBirthday(env.DB as never, NOW2);
+    expect(nb?.daysAway).toBe(2);
+    expect(nb?.date).toBe("07-05");
+    expect(nb?.members.map((m) => m.id).sort()).toEqual(["1", "2"]);
   });
 
   it("lists members yet to receive each baptism", async () => {
