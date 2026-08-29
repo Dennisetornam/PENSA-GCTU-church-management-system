@@ -41,4 +41,21 @@ describe("Members — birthdays", () => {
     const b = await res.json() as { results: { id: string }[] };
     expect(b.results.map((x) => x.id)).toEqual(["m3"]);
   });
+
+  it("filters members by gender", async () => {
+    await env.DB.prepare("UPDATE members SET gender='male' WHERE id IN ('m2','m3')").run();
+    await env.DB.prepare("UPDATE members SET gender='female' WHERE id='m1'").run();
+    const males = await (await get("/api/members?gender=male")).json() as { results: { id: string }[]; total: number };
+    expect(males.results.map((x) => x.id).sort()).toEqual(["m2", "m3"]);
+    const females = await (await get("/api/members?gender=female")).json() as { total: number };
+    expect(females.total).toBe(1);
+  });
+
+  it("exports gender-filtered members as an Excel workbook", async () => {
+    await env.DB.prepare("UPDATE members SET gender='male' WHERE id IN ('m2','m3')").run();
+    const res = await get("/api/members/export?gender=male");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("spreadsheetml.sheet");
+    expect((await res.arrayBuffer()).byteLength).toBeGreaterThan(0);
+  });
 });

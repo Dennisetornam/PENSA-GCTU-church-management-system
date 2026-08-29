@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Search, ChevronRight } from "lucide-react";
+import { Search, ChevronRight, Download } from "lucide-react";
 import { api } from "../api";
 import { Avatar, Badge, Spinner, Empty } from "../ui";
 import { BulkMessageBar } from "./BulkMessage";
@@ -24,7 +24,14 @@ const GENDERS: [string, string][] = [["", "All"], ["male", "Male"], ["female", "
 export function Members() {
   const [q, setQ] = useState("");
   const [gender, setGender] = useState("");
+  const [downloading, setDownloading] = useState(false);
   const dq = useDebounced(q);
+
+  const exportByCell = async () => {
+    setDownloading(true);
+    try { await api.download(`/api/members/export?gender=${gender}`, `${gender}-by-cell.xlsx`); }
+    finally { setDownloading(false); }
+  };
   const { data, isLoading } = useQuery({ queryKey: ["members", dq, gender], queryFn: () => api.get<{ results: Row[]; total: number }>(`/api/members?q=${encodeURIComponent(dq)}${gender ? `&gender=${gender}` : ""}&limit=50`) });
   const rows = data?.results ?? [];
 
@@ -43,10 +50,15 @@ export function Members() {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, phone or member ID…" className="w-full bg-transparent py-2 text-ink outline-none placeholder:text-ink/30" />
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         {GENDERS.map(([v, l]) => (
           <button key={v} onClick={() => setGender(v)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${gender === v ? "border-gold bg-gold/12 text-[#8a6a25]" : "border-ink/15 text-ink-soft/70 hover:border-ink/30"}`}>{l}</button>
         ))}
+        {gender && (
+          <button onClick={exportByCell} disabled={downloading} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-sage/40 px-3.5 py-1.5 text-sm font-medium text-[#4d5645] transition hover:bg-sage/10">
+            {downloading ? <Spinner /> : <><Download size={15} /> Excel · {GENDERS.find(([v]) => v === gender)?.[1]} by cell</>}
+          </button>
+        )}
       </div>
 
       {(dq || gender) && rows.length > 0 && <BulkMessageBar recipients={rows} context={`${[gender && GENDERS.find(([v]) => v === gender)?.[1], dq && `“${dq}”`].filter(Boolean).join(" · ")} · ${rows.length} shown`} />}

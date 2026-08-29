@@ -6,9 +6,10 @@ import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { approveRegistration, rejectRegistration, NotFoundError, ConflictError } from "../registration/approval";
-import { listMembers, getMember, changeMemberStatus, updateMember } from "../members/repository";
+import { listMembers, membersForExport, getMember, changeMemberStatus, updateMember } from "../members/repository";
 import { normalizeGhanaPhone } from "../registration/schemas";
 import { thumbKeyOf } from "../media/image";
+import { toXlsxSheets } from "../reports/format";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -99,6 +100,39 @@ app.get("/members/birthdays", authorize("members:read"), async (c) => {
      ORDER BY substr(date_of_birth, 9, 2) ASC, full_name ASC`,
   ).bind(...args).all();
   return c.json({ month: mm ? month : null, results: results ?? [] });
+});
+
+// Export members (optionally by gender/status) to an Excel workbook with one
+// sheet per cell. Registered before /members/:id so "export" isn't an id.
+app.get("/members/export", authorize("members:read"), async (c) => {
+  const gender = c.req.query("gender");
+  const status = c.req.query("status");
+  const rows = await membersForExport(c.env.DB, { gender: gender || undefined, status: status || undefined });
+
+  const byCell = new Map<string, typeof rows>();
+  for (const r of rows) {
+    const list = byCell.get(r.cell_name) ?? [];
+    list.push(r);
+    byCell.set(r.cell_name, list);
+  }
+  const columns = [
+    { key: "full_name", label: "Name" },
+    { key: "member_code", label: "Member ID" },
+    { key: "phone_number", label: "Phone" },
+    { key: "whatsapp_number", label: "WhatsApp" },
+    { key: "gender", label: "Gender" },
+    { key: "membership_status", label: "Status" },
+    { key: "cell_name", label: "Cell" },
+  ];
+  const sheets = [...byCell.entries()].map(([name, list]) => ({ name, columns, rows: list as unknown as Record<string, unknown>[] }));
+  const buf = toXlsxSheets(sheets);
+  const label = gender ? gender : "members";
+  return new Response(buf, {
+    headers: {
+      "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "content-disposition": `attachment; filename="${label}-by-cell.xlsx"`,
+    },
+  });
 });
 
 app.get("/members/:id", authorize("members:read"), async (c) => {

@@ -66,6 +66,26 @@ export async function listMembers(db: D1Database, p: MemberListParams): Promise<
   return { results: results ?? [], total: totalRow?.c ?? 0, page, limit };
 }
 
+/** All approved members matching the filters, with cell name — for exports. */
+export async function membersForExport(db: D1Database, p: { gender?: string; status?: string }) {
+  const where = ["m.deleted_at IS NULL", "m.registration_status = 'approved'"];
+  const args: unknown[] = [];
+  if (p.gender) { where.push("m.gender = ?"); args.push(p.gender); }
+  if (p.status) { where.push("m.membership_status = ?"); args.push(p.status); }
+  const { results } = await db
+    .prepare(
+      `SELECT m.member_code, m.full_name, m.phone_number, m.whatsapp_number, m.gender, m.membership_status,
+              COALESCE(c.name, 'Unassigned') AS cell_name
+       FROM members m
+       LEFT JOIN cells c ON c.id = m.cell_id
+       WHERE ${where.join(" AND ")}
+       ORDER BY cell_name COLLATE NOCASE, m.last_name COLLATE NOCASE, m.first_name COLLATE NOCASE`,
+    )
+    .bind(...args)
+    .all<{ member_code: string | null; full_name: string; phone_number: string; whatsapp_number: string | null; gender: string | null; membership_status: string; cell_name: string }>();
+  return results ?? [];
+}
+
 export async function getMember(db: D1Database, id: string): Promise<unknown | null> {
   const member = await db
     .prepare("SELECT * FROM members WHERE id = ? AND deleted_at IS NULL LIMIT 1")
