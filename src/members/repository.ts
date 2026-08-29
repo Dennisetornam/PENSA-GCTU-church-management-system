@@ -5,6 +5,7 @@ export interface MemberListParams {
   q?: string;
   status?: string;
   gender?: string;
+  level?: string;
   cellId?: string;
   departmentId?: string;
   page?: number;
@@ -20,7 +21,7 @@ export interface Paged<T> {
 
 export async function listMembers(db: D1Database, p: MemberListParams): Promise<Paged<unknown>> {
   const page = Math.max(1, p.page ?? 1);
-  const limit = Math.min(100, Math.max(1, p.limit ?? 25));
+  const limit = Math.min(1000, Math.max(1, p.limit ?? 25));
   const where: string[] = ["m.deleted_at IS NULL"];
   const args: unknown[] = [];
 
@@ -31,6 +32,10 @@ export async function listMembers(db: D1Database, p: MemberListParams): Promise<
   if (p.gender) {
     where.push("m.gender = ?");
     args.push(p.gender);
+  }
+  if (p.level) {
+    where.push("m.level = ?");
+    args.push(p.level);
   }
   if (p.cellId) {
     where.push("m.cell_id = ?");
@@ -55,7 +60,7 @@ export async function listMembers(db: D1Database, p: MemberListParams): Promise<
   const { results } = await db
     .prepare(
       `SELECT m.id, m.member_code, m.full_name, m.phone_number, m.whatsapp_number, m.cell_id,
-              m.gender, m.membership_status, m.profile_picture_key, m.created_at
+              m.gender, m.level, m.membership_status, m.profile_picture_key, m.created_at
        FROM members m WHERE ${whereSql}
        ORDER BY m.last_name, m.first_name
        LIMIT ? OFFSET ?`,
@@ -67,14 +72,15 @@ export async function listMembers(db: D1Database, p: MemberListParams): Promise<
 }
 
 /** All approved members matching the filters, with cell name — for exports. */
-export async function membersForExport(db: D1Database, p: { gender?: string; status?: string }) {
+export async function membersForExport(db: D1Database, p: { gender?: string; status?: string; level?: string }) {
   const where = ["m.deleted_at IS NULL", "m.registration_status = 'approved'"];
   const args: unknown[] = [];
   if (p.gender) { where.push("m.gender = ?"); args.push(p.gender); }
+  if (p.level) { where.push("m.level = ?"); args.push(p.level); }
   if (p.status) { where.push("m.membership_status = ?"); args.push(p.status); }
   const { results } = await db
     .prepare(
-      `SELECT m.member_code, m.full_name, m.phone_number, m.whatsapp_number, m.gender, m.membership_status,
+      `SELECT m.member_code, m.full_name, m.phone_number, m.whatsapp_number, m.gender, m.level, m.membership_status,
               COALESCE(c.name, 'Unassigned') AS cell_name
        FROM members m
        LEFT JOIN cells c ON c.id = m.cell_id
@@ -82,7 +88,7 @@ export async function membersForExport(db: D1Database, p: { gender?: string; sta
        ORDER BY cell_name COLLATE NOCASE, m.last_name COLLATE NOCASE, m.first_name COLLATE NOCASE`,
     )
     .bind(...args)
-    .all<{ member_code: string | null; full_name: string; phone_number: string; whatsapp_number: string | null; gender: string | null; membership_status: string; cell_name: string }>();
+    .all<{ member_code: string | null; full_name: string; phone_number: string; whatsapp_number: string | null; gender: string | null; level: string | null; membership_status: string; cell_name: string }>();
   return results ?? [];
 }
 

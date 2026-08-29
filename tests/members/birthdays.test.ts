@@ -51,9 +51,16 @@ describe("Members — birthdays", () => {
     expect(females.total).toBe(1);
   });
 
-  it("exports gender-filtered members as an Excel workbook", async () => {
-    await env.DB.prepare("UPDATE members SET gender='male' WHERE id IN ('m2','m3')").run();
-    const res = await get("/api/members/export?gender=male");
+  it("filters members by level", async () => {
+    await env.DB.prepare("UPDATE members SET level='200' WHERE id IN ('m1','m3')").run();
+    await env.DB.prepare("UPDATE members SET level='300' WHERE id='m2'").run();
+    const l200 = await (await get("/api/members?level=200")).json() as { results: { id: string }[] };
+    expect(l200.results.map((x) => x.id).sort()).toEqual(["m1", "m3"]);
+  });
+
+  it("exports filtered members as an Excel workbook", async () => {
+    await env.DB.prepare("UPDATE members SET gender='male', level='200' WHERE id IN ('m2','m3')").run();
+    const res = await get("/api/members/export?gender=male&level=200");
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("spreadsheetml.sheet");
     expect((await res.arrayBuffer()).byteLength).toBeGreaterThan(0);

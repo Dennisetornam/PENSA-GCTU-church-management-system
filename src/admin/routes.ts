@@ -78,6 +78,7 @@ app.get("/members", authorize("members:read"), async (c) => {
     q: c.req.query("q"),
     status: c.req.query("status"),
     gender: c.req.query("gender"),
+    level: c.req.query("level"),
     cellId: c.req.query("cellId"),
     departmentId: c.req.query("departmentId"),
     page: Number(c.req.query("page") ?? "1"),
@@ -102,12 +103,25 @@ app.get("/members/birthdays", authorize("members:read"), async (c) => {
   return c.json({ month: mm ? month : null, results: results ?? [] });
 });
 
-// Export members (optionally by gender/status) to an Excel workbook with one
-// sheet per cell. Registered before /members/:id so "export" isn't an id.
+// Export members (optionally by gender/level/status) to an Excel workbook: a
+// first "All" sheet with the whole filtered list, then one sheet per cell.
+// Registered before /members/:id so "export" isn't treated as an id.
 app.get("/members/export", authorize("members:read"), async (c) => {
   const gender = c.req.query("gender");
+  const level = c.req.query("level");
   const status = c.req.query("status");
-  const rows = await membersForExport(c.env.DB, { gender: gender || undefined, status: status || undefined });
+  const rows = await membersForExport(c.env.DB, { gender: gender || undefined, level: level || undefined, status: status || undefined });
+
+  const columns = [
+    { key: "full_name", label: "Name" },
+    { key: "member_code", label: "Member ID" },
+    { key: "phone_number", label: "Phone" },
+    { key: "whatsapp_number", label: "WhatsApp" },
+    { key: "gender", label: "Gender" },
+    { key: "level", label: "Level" },
+    { key: "membership_status", label: "Status" },
+    { key: "cell_name", label: "Cell" },
+  ];
 
   const byCell = new Map<string, typeof rows>();
   for (const r of rows) {
@@ -115,22 +129,22 @@ app.get("/members/export", authorize("members:read"), async (c) => {
     list.push(r);
     byCell.set(r.cell_name, list);
   }
-  const columns = [
-    { key: "full_name", label: "Name" },
-    { key: "member_code", label: "Member ID" },
-    { key: "phone_number", label: "Phone" },
-    { key: "whatsapp_number", label: "WhatsApp" },
-    { key: "gender", label: "Gender" },
-    { key: "membership_status", label: "Status" },
-    { key: "cell_name", label: "Cell" },
+
+  const parts = [gender ? gender[0]!.toUpperCase() + gender.slice(1) : "", level ? `Level ${level}` : ""].filter(Boolean);
+  const allName = `All ${parts.join(" · ") || "members"}`;
+  const asRows = (list: typeof rows) => list as unknown as Record<string, unknown>[];
+
+  // "All" sheet first, then a sheet per cell.
+  const sheets = [
+    { name: allName, columns, rows: asRows(rows) },
+    ...[...byCell.entries()].map(([name, list]) => ({ name, columns, rows: asRows(list) })),
   ];
-  const sheets = [...byCell.entries()].map(([name, list]) => ({ name, columns, rows: list as unknown as Record<string, unknown>[] }));
   const buf = toXlsxSheets(sheets);
-  const label = gender ? gender : "members";
+  const fname = parts.length ? parts.join("-").replace(/\s+/g, "") : "members";
   return new Response(buf, {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "content-disposition": `attachment; filename="${label}-by-cell.xlsx"`,
+      "content-disposition": `attachment; filename="${fname}-by-cell.xlsx"`,
     },
   });
 });

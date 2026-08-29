@@ -20,19 +20,27 @@ function useDebounced<T>(v: T, ms = 220) {
 }
 
 const GENDERS: [string, string][] = [["", "All"], ["male", "Male"], ["female", "Female"]];
+const LEVELS: [string, string][] = [["", "All levels"], ["100", "100"], ["200", "200"], ["300", "300"], ["400", "400"]];
 
 export function Members() {
   const [q, setQ] = useState("");
   const [gender, setGender] = useState("");
+  const [level, setLevel] = useState("");
   const [downloading, setDownloading] = useState(false);
   const dq = useDebounced(q);
 
+  const filterQS = `${gender ? `&gender=${gender}` : ""}${level ? `&level=${level}` : ""}`;
+  const filtered = !!(gender || level);
+  const filterLabel = [gender && GENDERS.find(([v]) => v === gender)?.[1], level && `Level ${level}`].filter(Boolean).join(" · ");
+
   const exportByCell = async () => {
     setDownloading(true);
-    try { await api.download(`/api/members/export?gender=${gender}`, `${gender}-by-cell.xlsx`); }
-    finally { setDownloading(false); }
+    try {
+      const fname = [gender && GENDERS.find(([v]) => v === gender)?.[1], level && `Level ${level}`].filter(Boolean).join("-").replace(/\s+/g, "") || "members";
+      await api.download(`/api/members/export?${filterQS.slice(1)}`, `${fname}-by-cell.xlsx`);
+    } finally { setDownloading(false); }
   };
-  const { data, isLoading } = useQuery({ queryKey: ["members", dq, gender], queryFn: () => api.get<{ results: Row[]; total: number }>(`/api/members?q=${encodeURIComponent(dq)}${gender ? `&gender=${gender}` : ""}&limit=50`) });
+  const { data, isLoading } = useQuery({ queryKey: ["members", dq, gender, level], queryFn: () => api.get<{ results: Row[]; total: number }>(`/api/members?q=${encodeURIComponent(dq)}${filterQS}&limit=1000`) });
   const rows = data?.results ?? [];
 
   return (
@@ -50,18 +58,25 @@ export function Members() {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, phone or member ID…" className="w-full bg-transparent py-2 text-ink outline-none placeholder:text-ink/30" />
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-ink-soft/50">Gender</span>
         {GENDERS.map(([v, l]) => (
           <button key={v} onClick={() => setGender(v)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${gender === v ? "border-gold bg-gold/12 text-[#8a6a25]" : "border-ink/15 text-ink-soft/70 hover:border-ink/30"}`}>{l}</button>
         ))}
-        {gender && (
+      </div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-ink-soft/50">Level</span>
+        {LEVELS.map(([v, l]) => (
+          <button key={v} onClick={() => setLevel(v)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${level === v ? "border-gold bg-gold/12 text-[#8a6a25]" : "border-ink/15 text-ink-soft/70 hover:border-ink/30"}`}>{l}</button>
+        ))}
+        {filtered && (
           <button onClick={exportByCell} disabled={downloading} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-sage/40 px-3.5 py-1.5 text-sm font-medium text-[#4d5645] transition hover:bg-sage/10">
-            {downloading ? <Spinner /> : <><Download size={15} /> Excel · {GENDERS.find(([v]) => v === gender)?.[1]} by cell</>}
+            {downloading ? <Spinner /> : <><Download size={15} /> Excel · {filterLabel} by cell</>}
           </button>
         )}
       </div>
 
-      {(dq || gender) && rows.length > 0 && <BulkMessageBar recipients={rows} context={`${[gender && GENDERS.find(([v]) => v === gender)?.[1], dq && `“${dq}”`].filter(Boolean).join(" · ")} · ${rows.length} shown`} />}
+      {(dq || filtered) && rows.length > 0 && <BulkMessageBar recipients={rows} context={`${[filterLabel, dq && `“${dq}”`].filter(Boolean).join(" · ")} · ${rows.length} shown`} />}
 
       {isLoading ? (
         <div className="grid h-24 place-items-center text-ink-soft/50"><Spinner /></div>
