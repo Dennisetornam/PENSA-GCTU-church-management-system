@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Pencil, Check, X, Phone, MessageCircle, GraduationCap, Home, Flame, Droplets, Users2, CalendarCheck } from "lucide-react";
+import { ArrowLeft, Pencil, Check, X, Phone, MessageCircle, GraduationCap, Home, Flame, Droplets, Users2, CalendarCheck, Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { api } from "../api";
 import { Spinner, Badge, Avatar } from "../ui";
@@ -85,7 +85,7 @@ export function MemberProfile() {
         </div>
 
         {editing && o ? (
-          <EditForm m={m} o={o} onDone={() => { setEditing(false); qc.invalidateQueries({ queryKey: ["member", id] }); qc.invalidateQueries({ queryKey: ["members"] }); }} onCancel={() => setEditing(false)} />
+          <EditForm m={m} o={o} onDone={() => { setEditing(false); qc.invalidateQueries({ queryKey: ["member", id] }); qc.invalidateQueries({ queryKey: ["members"] }); }} onCancel={() => setEditing(false)} onDeleted={() => { qc.invalidateQueries({ queryKey: ["members"] }); nav("/dashboard/members"); }} />
         ) : (
           <div className="grid gap-x-8 gap-y-5 p-6 sm:grid-cols-2">
             <Field icon={<GraduationCap size={15} />} label="Programme">{o?.programmes.find((p) => p.id === m.programme_id)?.name ?? "—"}</Field>
@@ -197,7 +197,7 @@ function Field({ icon, label, children }: { icon?: React.ReactNode; label: strin
   );
 }
 
-function EditForm({ m, o, onDone, onCancel }: { m: Member; o: Options; onDone: () => void; onCancel: () => void }) {
+function EditForm({ m, o, onDone, onCancel, onDeleted }: { m: Member; o: Options; onDone: () => void; onCancel: () => void; onDeleted: () => void }) {
   const [f, setF] = useState({
     firstName: m.first_name, lastName: m.last_name, otherNames: m.other_names ?? "", dateOfBirth: m.date_of_birth ?? "",
     gender: m.gender ?? "", programmeId: m.programme_id ?? "", level: m.level ?? "",
@@ -210,6 +210,7 @@ function EditForm({ m, o, onDone, onCancel }: { m: Member; o: Options; onDone: (
   const [err, setErr] = useState<string | null>(null);
   const set = (p: Partial<typeof f>) => setF((s) => ({ ...s, ...p }));
   const save = useMutation({ mutationFn: () => api.post(`/api/members/${m.id}`, { ...f, gender: f.gender || null, officerStatus: f.officerStatus || null }), onSuccess: onDone, onError: (e: Error) => setErr(e.message) });
+  const del = useMutation({ mutationFn: () => api.del(`/api/members/${m.id}`), onSuccess: onDeleted, onError: (e: Error) => setErr(e.message) });
   const toggleDept = (id: string) => set({ departmentIds: f.departmentIds.includes(id) ? f.departmentIds.filter((d) => d !== id) : [...f.departmentIds, id] });
 
   return (
@@ -244,9 +245,16 @@ function EditForm({ m, o, onDone, onCancel }: { m: Member; o: Options; onDone: (
       </div>
       <L label="Notes"><textarea className="field min-h-20" value={f.notes} onChange={(e) => set({ notes: e.target.value })} /></L>
       {err && <div className="rounded-xl border border-clay/30 bg-clay/8 px-3.5 py-2.5 text-sm text-clay">{err}</div>}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button className="btn-ghost" onClick={onCancel}><X size={16} /> Cancel</button>
         <button className="btn-gold" disabled={!f.firstName || !f.lastName || save.isPending} onClick={() => { setErr(null); save.mutate(); }}>{save.isPending ? <Spinner /> : <><Check size={16} /> Save changes</>}</button>
+        <button
+          onClick={() => { if (window.confirm(`Delete ${m.full_name}? They will be removed from all lists. This can be undone by an admin.`)) { setErr(null); del.mutate(); } }}
+          disabled={del.isPending}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-clay/30 px-3.5 py-2 text-sm font-medium text-clay transition hover:bg-clay/[0.06] disabled:opacity-50"
+        >
+          {del.isPending ? <Spinner /> : <><Trash2 size={15} /> Delete member</>}
+        </button>
       </div>
     </div>
   );

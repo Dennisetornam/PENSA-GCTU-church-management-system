@@ -67,6 +67,23 @@ describe("Module 6 — attendance routes", () => {
     expect(body.memberId).toBe("m3");
   });
 
+  it("deletes a session so it drops out of the list and 404s", async () => {
+    const create = await app.fetch(req("/api/attendance/sessions", { method: "POST", headers: auth(), body: JSON.stringify({ gatheringTypeId: "gt_sunday", sessionDate: "2026-06-07" }) }), env as never);
+    const { id } = (await create.json()) as { id: string };
+
+    const del = await app.fetch(req(`/api/attendance/sessions/${id}`, { method: "DELETE", headers: auth() }), env as never);
+    expect(del.status).toBe(200);
+
+    const list = (await (await app.fetch(req("/api/attendance/sessions", { headers: auth() }), env as never)).json()) as { results: { id: string }[] };
+    expect(list.results.map((s) => s.id)).not.toContain(id);
+
+    const get = await app.fetch(req(`/api/attendance/sessions/${id}`, { headers: auth() }), env as never);
+    expect(get.status).toBe(404);
+
+    const again = await app.fetch(req(`/api/attendance/sessions/${id}`, { method: "DELETE", headers: auth() }), env as never);
+    expect(again.status).toBe(404);
+  });
+
   it("returns 400 for an invalid session payload", async () => {
     const res = await app.fetch(req("/api/attendance/sessions", { method: "POST", headers: auth(), body: JSON.stringify({ gatheringTypeId: "gt_sunday", sessionDate: "not-a-date" }) }), env as never);
     expect(res.status).toBe(400);

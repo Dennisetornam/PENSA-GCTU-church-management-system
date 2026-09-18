@@ -183,6 +183,20 @@ export async function updateMember(db: D1Database, id: string, u: MemberUpdate, 
   }
 }
 
+/**
+ * Soft-delete a member: sets deleted_at so they drop out of every list,
+ * directory, roster, export and analytics query (all filter `deleted_at IS
+ * NULL`). Reversible — the row and its history are preserved.
+ */
+export async function softDeleteMember(db: D1Database, id: string): Promise<void> {
+  const now = new Date().toISOString();
+  const res = await db
+    .prepare("UPDATE members SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+    .bind(now, now, id)
+    .run();
+  if (!res.meta.changes) throw new Error("member not found");
+}
+
 export async function changeMemberStatus(
   db: D1Database,
   id: string,

@@ -54,6 +54,21 @@ export async function listSessions(db: D1Database, p: { gatheringTypeId?: string
   return { results: results ?? [], page, limit };
 }
 
+/**
+ * Soft-delete a session: sets deleted_at so it (and its attendance records)
+ * drop out of every list, roster and analytics query, which all filter
+ * `deleted_at IS NULL`. Finance entries linked to it keep their data (their
+ * session_id FK is ON DELETE SET NULL and is untouched by the soft delete).
+ */
+export async function deleteSession(db: D1Database, id: string): Promise<void> {
+  const now = new Date().toISOString();
+  const res = await db
+    .prepare("UPDATE attendance_sessions SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+    .bind(now, now, id)
+    .run();
+  if (!res.meta.changes) throw new NotFoundError("session not found");
+}
+
 export async function getSession(db: D1Database, id: string) {
   const session = await db
     .prepare("SELECT * FROM attendance_sessions WHERE id = ? AND deleted_at IS NULL LIMIT 1")

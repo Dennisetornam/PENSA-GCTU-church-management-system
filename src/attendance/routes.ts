@@ -8,7 +8,7 @@ import { LIMIT_RULES } from "../rate-limit/config";
 
 const rl = { onViolation: auditViolation };
 import {
-  createSession, listSessions, getSession, getRoster, markAttendance, closeSession,
+  createSession, listSessions, getSession, getRoster, markAttendance, closeSession, deleteSession,
   checkInByQr, getMemberAttendance, getSessionAbsentees, NotFoundError, ConflictError,
 } from "./repository";
 import { toXlsxSheets } from "../reports/format";
@@ -70,6 +70,13 @@ app.put("/sessions/:id/records", authorize("attendance:record"), rateLimit(LIMIT
 
 app.post("/sessions/:id/close", authorize("attendance:record"), async (c) => {
   await closeSession(c.env.DB, c.req.param("id"));
+  return c.json({ ok: true });
+});
+
+// Delete a session (e.g. one created by mistake). Soft delete — it and its
+// records disappear from every view; finance stays intact.
+app.delete("/sessions/:id", authorize("attendance:record"), async (c) => {
+  await deleteSession(c.env.DB, c.req.param("id"));
   return c.json({ ok: true });
 });
 

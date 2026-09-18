@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock, Wallet, Undo2, UserX, Download, X } from "lucide-react";
+import { CalendarPlus, Search, Check, UserCheck, ChevronRight, Lock, Wallet, Undo2, UserX, Download, X, Trash2 } from "lucide-react";
 import { api, invalidateFinance } from "../api";
 import { Spinner, Badge, Empty, Avatar } from "../ui";
 import { RecordModal, type Options as FinanceOptions } from "./Finance";
@@ -33,6 +33,13 @@ function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
     mutationFn: () => api.post<{ id: string }>("/api/attendance/sessions", { gatheringTypeId: gt, sessionDate: date }),
     onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["att-sessions"] }); onOpen(r.id); },
   });
+  const del = useMutation({
+    mutationFn: (id: string) => api.del(`/api/attendance/sessions/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["att-sessions"] }),
+  });
+  const removeSession = (s: Session) => {
+    if (window.confirm(`Delete the ${s.gathering_name} session on ${s.session_date}? This removes the session and its attendance records.`)) del.mutate(s.id);
+  };
 
   const list = sessions.data?.results ?? [];
 
@@ -70,8 +77,8 @@ function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
       ) : (
         <ul className="space-y-2">
           {list.map((s) => (
-            <li key={s.id}>
-              <button onClick={() => onOpen(s.id)} className="card flex w-full items-center gap-4 p-4 text-left transition hover:shadow-lift">
+            <li key={s.id} className="flex items-center gap-2">
+              <button onClick={() => onOpen(s.id)} className="card flex flex-1 items-center gap-4 p-4 text-left transition hover:shadow-lift">
                 <span className={`grid h-11 w-11 place-items-center rounded-xl ${s.status === "open" ? "bg-gold/15 text-gold" : "bg-ink/[0.06] text-ink-soft"}`}>
                   {s.status === "open" ? <UserCheck size={20} /> : <Lock size={18} />}
                 </span>
@@ -81,6 +88,15 @@ function Sessions({ onOpen }: { onOpen: (id: string) => void }) {
                 </div>
                 {s.status === "open" ? <Badge tone="gold">Open</Badge> : <Badge tone="ink">{s.attended ?? 0} attended</Badge>}
                 <ChevronRight size={18} className="text-ink-soft/40" />
+              </button>
+              <button
+                onClick={() => removeSession(s)}
+                disabled={del.isPending}
+                title="Delete session"
+                aria-label={`Delete ${s.gathering_name} session on ${s.session_date}`}
+                className="shrink-0 rounded-xl border border-ink/12 p-3 text-ink-soft/55 transition hover:border-clay/40 hover:bg-clay/[0.06] hover:text-clay disabled:opacity-50"
+              >
+                <Trash2 size={18} />
               </button>
             </li>
           ))}

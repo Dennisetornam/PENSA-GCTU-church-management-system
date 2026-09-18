@@ -61,6 +61,16 @@ describe("Officers & Alumni", () => {
     expect(officers.results.map((x) => x.id).sort()).toEqual(["m1", "m2", "m3"]);
   });
 
+  it("soft-deletes a member so they leave the directory and 404", async () => {
+    const res = await req("/api/members/m3", { method: "DELETE" });
+    expect(res.status).toBe(200);
+    const dir = await (await req("/api/members")).json() as { results: { id: string }[] };
+    expect(dir.results.map((x) => x.id)).not.toContain("m3");
+    expect((await req("/api/members/m3")).status).toBe(404);
+    // deleting again → 404 (already gone)
+    expect((await req("/api/members/m3", { method: "DELETE" })).status).toBe(404);
+  });
+
   it("moves a level-400 student to alumni via the status endpoint", async () => {
     const res = await req("/api/members/m3/status", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ status: "alumni", reason: "completed" }) });
     expect(res.status).toBe(200);

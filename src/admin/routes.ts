@@ -6,7 +6,7 @@ import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { approveRegistration, rejectRegistration, NotFoundError, ConflictError } from "../registration/approval";
-import { listMembers, membersForExport, listOfficers, getMember, changeMemberStatus, updateMember } from "../members/repository";
+import { listMembers, membersForExport, listOfficers, getMember, changeMemberStatus, updateMember, softDeleteMember } from "../members/repository";
 import { normalizeGhanaPhone } from "../registration/schemas";
 import { thumbKeyOf } from "../media/image";
 import { toXlsxSheets } from "../reports/format";
@@ -211,6 +211,17 @@ app.post("/members/:id", authorize("members:update"), async (c) => {
     const msg = String((e as Error).message || "");
     if (msg.includes("not found")) return c.json({ error: "member not found" }, 404);
     if (msg.toUpperCase().includes("UNIQUE")) return c.json({ error: "that phone number belongs to another member" }, 409);
+    throw e;
+  }
+  return c.json({ ok: true });
+});
+
+// Soft-delete a member (hidden everywhere, recoverable).
+app.delete("/members/:id", authorize("members:update"), async (c) => {
+  try {
+    await softDeleteMember(c.env.DB, c.req.param("id"));
+  } catch (e) {
+    if (String((e as Error).message || "").includes("not found")) return c.json({ error: "member not found" }, 404);
     throw e;
   }
   return c.json({ ok: true });
