@@ -5,7 +5,7 @@ import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { requireFinanceUnlock } from "../auth/finance-gate";
 import { detectImage, MAX_IMAGE_BYTES } from "../media/image";
-import { createEntry, updateEntry, getEntry, listEntries, summary, quotaByMonth, QUOTA_RATE, CATEGORIES, METHODS, PLEDGE_STATUSES, createExpense, updateExpense, getExpense, listExpenses } from "./repository";
+import { createEntry, updateEntry, deleteEntry, getEntry, listEntries, summary, quotaByMonth, QUOTA_RATE, CATEGORIES, METHODS, PLEDGE_STATUSES, createExpense, updateExpense, deleteExpense, getExpense, listExpenses } from "./repository";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -96,6 +96,19 @@ app.put("/:id", authorize("finance:manage"), async (c) => {
   return c.json({ ok: true });
 });
 
+// Delete an entry (soft). Removes it from all lists, coffers, summary and quota.
+app.delete("/:id", authorize("finance:manage"), async (c) => {
+  const id = c.req.param("id");
+  const existing = await getEntry(c.env.DB, id) as { category: string; amount_minor: number } | null;
+  if (!existing) return c.json({ error: "not found" }, 404);
+  await deleteEntry(c.env.DB, id);
+  await c.env.DB.prepare(
+    `INSERT INTO audit_log (id, actor_user_id, action, entity_type, entity_id, summary, created_at)
+     VALUES (lower(hex(randomblob(16))), ?, 'finance.deleted', 'finance', ?, ?, datetime('now'))`,
+  ).bind(c.get("userId"), id, `${existing.category} ${Number(existing.amount_minor) / 100}`).run();
+  return c.json({ ok: true });
+});
+
 app.get("/", authorize("finance:view"), async (c) =>
   c.json(await listEntries(c.env.DB, {
     category: c.req.query("category"),
@@ -174,6 +187,18 @@ app.put("/expenses/:id", authorize("finance:manage"), async (c) => {
     `INSERT INTO audit_log (id, actor_user_id, action, entity_type, entity_id, summary, created_at)
      VALUES (lower(hex(randomblob(16))), ?, 'finance.expense.updated', 'finance_expense', ?, ?, datetime('now'))`,
   ).bind(c.get("userId"), id, `${b.category} ${b.amount}`).run();
+  return c.json({ ok: true });
+});
+
+app.delete("/expenses/:id", authorize("finance:manage"), async (c) => {
+  const id = c.req.param("id");
+  const existing = await getExpense(c.env.DB, id) as { category: string; amount_minor: number } | null;
+  if (!existing) return c.json({ error: "not found" }, 404);
+  await deleteExpense(c.env.DB, id);
+  await c.env.DB.prepare(
+    `INSERT INTO audit_log (id, actor_user_id, action, entity_type, entity_id, summary, created_at)
+     VALUES (lower(hex(randomblob(16))), ?, 'finance.expense.deleted', 'finance_expense', ?, ?, datetime('now'))`,
+  ).bind(c.get("userId"), id, `${existing.category} ${Number(existing.amount_minor) / 100}`).run();
   return c.json({ ok: true });
 });
 

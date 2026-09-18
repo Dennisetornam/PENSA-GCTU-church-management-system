@@ -128,6 +128,44 @@ describe("Module 7b — finance", () => {
     expect(row.occurred_on).toBe("2026-06-08");
   });
 
+  it("deletes an entry so it drops out of totals and the list", async () => {
+    const created = await (await rec({ category: "offering_cash", amount: 100, paymentMethod: "cash", serviceTypeId: "gt_sunday", occurredOn: "2026-06-07" })).json() as { id: string };
+    await rec({ category: "tithe", amount: 50, memberName: "Ama Owusu", occurredOn: "2026-06-07" });
+
+    const del = await app.fetch(new Request(`https://x/api/finance/${created.id}`, { method: "DELETE", headers: auth(token) }), env as never);
+    expect(del.status).toBe(200);
+
+    const sum = await (await app.fetch(new Request("https://x/api/finance/summary", { headers: auth(token) }), env as never)).json() as { totalMinor: number; byCategory: Record<string, unknown> };
+    expect(sum.totalMinor).toBe(5000); // only the tithe remains
+    expect(sum.byCategory.offering_cash).toBeUndefined();
+
+    const list = await (await app.fetch(new Request("https://x/api/finance", { headers: auth(token) }), env as never)).json() as { results: { id: string }[] };
+    expect(list.results.map((e) => e.id)).not.toContain(created.id);
+
+    // deleting again → 404 (already gone)
+    expect((await app.fetch(new Request(`https://x/api/finance/${created.id}`, { method: "DELETE", headers: auth(token) }), env as never)).status).toBe(404);
+  });
+
+  it("delete is finance:manage-guarded", async () => {
+    const t = await signAccessToken({ sub: "x", role: "cell_leader", scope: { departments: [], cells: [] } }, env.JWT_SECRET);
+    expect((await app.fetch(new Request("https://x/api/finance/whatever", { method: "DELETE", headers: auth(t) }), env as never)).status).toBe(403);
+  });
+
+  it("deletes an expense so the net figure goes back up", async () => {
+    await rec({ category: "offering_cash", amount: 1000, occurredOn: "2026-06-07" });
+    const created = await (await app.fetch(new Request("https://x/api/finance/expenses", { method: "POST", headers: auth(token), body: JSON.stringify({ category: "Transport", amount: 200, paymentMethod: "cash", occurredOn: "2026-06-07" }) }), env as never)).json() as { id: string };
+
+    let sum = await (await app.fetch(new Request("https://x/api/finance/summary", { headers: auth(token) }), env as never)).json() as { netMinor: number; expensesMinor: number };
+    expect(sum.netMinor).toBe(80000); // 1000 - 200
+
+    const del = await app.fetch(new Request(`https://x/api/finance/expenses/${created.id}`, { method: "DELETE", headers: auth(token) }), env as never);
+    expect(del.status).toBe(200);
+
+    sum = await (await app.fetch(new Request("https://x/api/finance/summary", { headers: auth(token) }), env as never)).json() as { netMinor: number; expensesMinor: number };
+    expect(sum.expensesMinor).toBe(0);
+    expect(sum.netMinor).toBe(100000); // back to full received amount
+  });
+
   it("returns 404 when editing a missing entry", async () => {
     const put = await app.fetch(new Request("https://x/api/finance/does-not-exist", { method: "PUT", headers: auth(token), body: JSON.stringify({ category: "tithe", amount: 10, memberName: "X", occurredOn: "2026-06-07" }) }), env as never);
     expect(put.status).toBe(404);

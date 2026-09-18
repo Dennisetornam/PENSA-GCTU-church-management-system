@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check, Upload, Paperclip, X, Pencil, Receipt, Minus, Lock } from "lucide-react";
+import { Banknote, Smartphone, HandCoins, HeartHandshake, Sparkles, Gift, Plus, Check, Upload, Paperclip, X, Pencil, Receipt, Minus, Lock, Trash2 } from "lucide-react";
 import { api, invalidateFinance } from "../api";
 import { resizeToFile } from "../imageResize";
 import { useFinanceGate } from "../financeGate";
@@ -45,6 +45,10 @@ export function Finance() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const refresh = () => invalidateFinance(qc);
+  const delEntry = useMutation({ mutationFn: (id: string) => api.del(`/api/finance/${id}`), onSuccess: refresh });
+  const delExpense = useMutation({ mutationFn: (id: string) => api.del(`/api/finance/expenses/${id}`), onSuccess: refresh });
+  const removeEntry = (e: Entry) => { if (window.confirm(`Delete this ${CAT_LABEL[e.category] ?? e.category} entry of ${cedis(e.amount_minor)} on ${e.occurred_on}? It will be taken out of all totals and the quota.`)) delEntry.mutate(e.id); };
+  const removeExpense = (x: Expense) => { if (window.confirm(`Delete the expense "${x.category}" of ${cedis(x.amount_minor)} on ${x.occurred_on}? The actual figure will go back up by this amount.`)) delExpense.mutate(x.id); };
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -125,7 +129,10 @@ export function Finance() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/75">{e.recorded_by_name ?? "—"}</td>
                   <td className="whitespace-nowrap px-2 py-2.5 text-right">
-                    <button onClick={() => setEditing(e)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft/70 transition hover:bg-ink/[0.05] hover:text-ink" title="Edit entry"><Pencil size={13} /> Edit</button>
+                    <div className="inline-flex items-center gap-1">
+                      <button onClick={() => setEditing(e)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft/70 transition hover:bg-ink/[0.05] hover:text-ink" title="Edit entry"><Pencil size={13} /> Edit</button>
+                      <button onClick={() => removeEntry(e)} disabled={delEntry.isPending} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft/70 transition hover:bg-clay/[0.08] hover:text-clay disabled:opacity-50" title="Delete entry"><Trash2 size={13} /> Delete</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -161,7 +168,10 @@ export function Finance() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-ink-soft/75">{x.recorded_by_name ?? "—"}</td>
                   <td className="whitespace-nowrap px-2 py-2.5 text-right">
-                    <button onClick={() => setEditingExpense(x)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft/70 transition hover:bg-ink/[0.05] hover:text-ink" title="Edit expense"><Pencil size={13} /> Edit</button>
+                    <div className="inline-flex items-center gap-1">
+                      <button onClick={() => setEditingExpense(x)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft/70 transition hover:bg-ink/[0.05] hover:text-ink" title="Edit expense"><Pencil size={13} /> Edit</button>
+                      <button onClick={() => removeExpense(x)} disabled={delExpense.isPending} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft/70 transition hover:bg-clay/[0.08] hover:text-clay disabled:opacity-50" title="Delete expense"><Trash2 size={13} /> Delete</button>
+                    </div>
                   </td>
                 </tr>
               ))}

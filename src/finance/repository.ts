@@ -68,6 +68,15 @@ export async function updateEntry(db: D1Database, id: string, e: EntryPatch): Pr
     .run();
 }
 
+/** Soft-delete an entry — it leaves every list, summary, coffers and quota
+ * figure (all filter `deleted_at IS NULL`). Reversible; the row is kept. */
+export async function deleteEntry(db: D1Database, id: string): Promise<void> {
+  await db
+    .prepare("UPDATE finance_entries SET deleted_at = datetime('now') WHERE id = ? AND deleted_at IS NULL")
+    .bind(id)
+    .run();
+}
+
 export interface ListParams {
   category?: string;
   from?: string;
@@ -214,6 +223,14 @@ export async function updateExpense(db: D1Database, id: string, e: Omit<NewExpen
        WHERE id = ? AND deleted_at IS NULL`,
     )
     .bind(e.category, e.amountMinor, e.currency, e.paymentMethod ?? null, e.occurredOn, e.receiptImageKey ?? null, e.notes ?? null, id)
+    .run();
+}
+
+/** Soft-delete an expense — it leaves every list, net figure and quota base. */
+export async function deleteExpense(db: D1Database, id: string): Promise<void> {
+  await db
+    .prepare("UPDATE finance_expenses SET deleted_at = datetime('now') WHERE id = ? AND deleted_at IS NULL")
+    .bind(id)
     .run();
 }
 
