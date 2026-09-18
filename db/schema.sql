@@ -173,6 +173,8 @@ CREATE TABLE members (
     residence_during_vacation TEXT,                     -- where they stay during vacation
     -- Cell (one per member)
     cell_id                   TEXT REFERENCES cells(id) ON DELETE SET NULL,
+    -- Officer / ordained role in the church (optional)
+    officer_status            TEXT CHECK (officer_status IN ('deacon','deaconess','elder')),
     -- Primary gathering preference (collected at registration)
     primary_gathering_type_id TEXT REFERENCES gathering_types(id) ON DELETE SET NULL,
     -- Spiritual information

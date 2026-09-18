@@ -28,6 +28,10 @@ export async function listMembers(db: D1Database, p: MemberListParams): Promise<
   if (p.status) {
     where.push("m.membership_status = ?");
     args.push(p.status);
+  } else {
+    // The directory is the "current members" view — alumni live in their own
+    // section, so hide them unless explicitly asked for (status=alumni).
+    where.push("m.membership_status != 'alumni'");
   }
   if (p.gender) {
     where.push("m.gender = ?");
@@ -78,6 +82,7 @@ export async function membersForExport(db: D1Database, p: { gender?: string; sta
   if (p.gender) { where.push("m.gender = ?"); args.push(p.gender); }
   if (p.level) { where.push("m.level = ?"); args.push(p.level); }
   if (p.status) { where.push("m.membership_status = ?"); args.push(p.status); }
+  else { where.push("m.membership_status != 'alumni'"); } // alumni export via status=alumni
   const { results } = await db
     .prepare(
       `SELECT m.member_code, m.full_name, m.phone_number, m.whatsapp_number, m.gender, m.level, m.membership_status,
@@ -89,6 +94,21 @@ export async function membersForExport(db: D1Database, p: { gender?: string; sta
     )
     .bind(...args)
     .all<{ member_code: string | null; full_name: string; phone_number: string; whatsapp_number: string | null; gender: string | null; level: string | null; membership_status: string; cell_name: string }>();
+  return results ?? [];
+}
+
+/** All church officers (deacons / deaconesses / elders), with cell name. */
+export async function listOfficers(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT m.id, m.member_code, m.full_name, m.phone_number, m.whatsapp_number, m.officer_status, m.level,
+              m.membership_status, COALESCE(c.name, 'Unassigned') AS cell_name
+       FROM members m
+       LEFT JOIN cells c ON c.id = m.cell_id
+       WHERE m.deleted_at IS NULL AND m.officer_status IS NOT NULL
+       ORDER BY m.last_name COLLATE NOCASE, m.first_name COLLATE NOCASE`,
+    )
+    .all<{ id: string; member_code: string | null; full_name: string; phone_number: string; whatsapp_number: string | null; officer_status: string; level: string | null; membership_status: string; cell_name: string }>();
   return results ?? [];
 }
 
@@ -111,7 +131,7 @@ export async function getMember(db: D1Database, id: string): Promise<unknown | n
 export interface MemberUpdate {
   firstName: string; lastName: string; otherNames?: string | null; dateOfBirth?: string | null; gender?: string | null;
   programmeId?: string | null; level?: string | null; residenceStatus?: string | null; residenceDetail?: string | null;
-  vacationResidence?: string | null; cellId?: string | null;
+  vacationResidence?: string | null; cellId?: string | null; officerStatus?: string | null;
   holyGhostBaptism: boolean; holyGhostBaptismDate?: string | null; waterBaptism: boolean; waterBaptismDate?: string | null;
   phoneNumber: string; whatsappNumber?: string | null; membershipStatus: string; departmentIds?: string[]; notes?: string | null;
 }
@@ -129,13 +149,13 @@ export async function updateMember(db: D1Database, id: string, u: MemberUpdate, 
   await db
     .prepare(
       `UPDATE members SET first_name=?, last_name=?, other_names=?, date_of_birth=?, gender=?, programme_id=?, level=?,
-         residence_status=?, residence_detail=?, residence_during_vacation=?, cell_id=?, holy_ghost_baptism=?,
+         residence_status=?, residence_detail=?, residence_during_vacation=?, cell_id=?, officer_status=?, holy_ghost_baptism=?,
          holy_ghost_baptism_date=?, water_baptism=?, water_baptism_date=?, phone_number=?, whatsapp_number=?,
          membership_status=?, notes=? WHERE id=?`,
     )
     .bind(
       u.firstName, u.lastName, nz(u.otherNames), nz(u.dateOfBirth), nz(u.gender), nz(u.programmeId), nz(u.level),
-      nz(u.residenceStatus), nz(u.residenceDetail), nz(u.vacationResidence), nz(u.cellId), bit(u.holyGhostBaptism),
+      nz(u.residenceStatus), nz(u.residenceDetail), nz(u.vacationResidence), nz(u.cellId), nz(u.officerStatus), bit(u.holyGhostBaptism),
       nz(u.holyGhostBaptismDate), bit(u.waterBaptism), nz(u.waterBaptismDate), u.phoneNumber, nz(u.whatsappNumber),
       u.membershipStatus, nz(u.notes), id,
     )

@@ -10,11 +10,13 @@ interface Member {
   id: string; member_code: string | null; first_name: string; last_name: string; other_names: string | null;
   full_name: string; date_of_birth: string | null; gender: string | null; programme_id: string | null; level: string | null;
   residence_status: string | null; residence_detail: string | null; residence_during_vacation: string | null;
-  cell_id: string | null; holy_ghost_baptism: number; holy_ghost_baptism_date: string | null; water_baptism: number;
+  cell_id: string | null; officer_status: string | null; holy_ghost_baptism: number; holy_ghost_baptism_date: string | null; water_baptism: number;
   water_baptism_date: string | null; phone_number: string; whatsapp_number: string | null; membership_status: string;
   notes: string | null; join_date: string | null; profile_picture_key: string | null;
   departments: { id: string; name: string }[];
 }
+
+const OFFICER_LABEL: Record<string, string> = { deacon: "Deacon", deaconess: "Deaconess", elder: "Elder" };
 interface Options { programmes: { id: string; name: string }[]; departments: { id: string; name: string }[]; cells: { id: string; name: string }[]; }
 
 const STATUS_TONE: Record<string, "gold" | "sage" | "clay" | "ink"> = { actual_member: "sage", visitor: "gold", associate: "clay", alumni: "ink" };
@@ -28,6 +30,14 @@ export function MemberProfile() {
   const { data: o } = useQuery({ queryKey: ["options"], queryFn: () => api.get<Options>("/register/options") });
   const [editing, setEditing] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const moveToAlumni = useMutation({
+    mutationFn: () => api.post(`/api/members/${id}/status`, { status: "alumni", reason: "completed — moved to alumni" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["member", id] });
+      nav("/dashboard/alumni");
+    },
+  });
 
   if (isLoading) return <div className="grid h-60 place-items-center text-ink-soft/50"><Spinner /></div>;
   if (!m) return <div className="mx-auto max-w-2xl"><Link to="/dashboard/members" className="text-ink-soft/60">← Members</Link><p className="mt-6 font-display text-2xl text-ink">Member not found.</p></div>;
@@ -55,9 +65,23 @@ export function MemberProfile() {
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
               <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-medium text-gold-soft">{m.member_code ?? "—"}</span>
               <Badge tone={STATUS_TONE[m.membership_status] ?? "ink"}>{lbl(m.membership_status)}</Badge>
+              {m.officer_status && <Badge tone="gold">{OFFICER_LABEL[m.officer_status] ?? m.officer_status}</Badge>}
             </div>
           </div>
-          {!editing && <button onClick={() => setEditing(true)} className="relative btn-gold"><Pencil size={15} /> Edit</button>}
+          {!editing && (
+            <div className="relative flex flex-wrap items-center gap-2">
+              {m.level === "400" && m.membership_status !== "alumni" && (
+                <button
+                  onClick={() => { if (confirm(`Move ${m.full_name} to Alumni? They will be removed from the current members list.`)) moveToAlumni.mutate(); }}
+                  disabled={moveToAlumni.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3.5 py-2 text-sm font-medium text-ivory-soft transition hover:bg-white/20 disabled:opacity-60"
+                >
+                  {moveToAlumni.isPending ? <Spinner /> : <><GraduationCap size={15} /> Move to alumni</>}
+                </button>
+              )}
+              <button onClick={() => setEditing(true)} className="btn-gold"><Pencil size={15} /> Edit</button>
+            </div>
+          )}
         </div>
 
         {editing && o ? (
@@ -70,6 +94,7 @@ export function MemberProfile() {
             <Field icon={<Home size={15} />} label="Vacation residence">{m.residence_during_vacation ?? "—"}</Field>
             <Field icon={<Users2 size={15} />} label="Cell">{o?.cells.find((c) => c.id === m.cell_id)?.name ?? "—"}</Field>
             <Field icon={<Users2 size={15} />} label="Departments">{m.departments.map((d) => d.name).join(", ") || "—"}</Field>
+            <Field icon={<Users2 size={15} />} label="Officer status">{m.officer_status ? OFFICER_LABEL[m.officer_status] ?? m.officer_status : "—"}</Field>
             <Field icon={<Phone size={15} />} label="Phone"><a href={`sms:${m.phone_number}`} className="text-ink hover:text-gold hover:underline">{m.phone_number}</a></Field>
             <Field icon={<MessageCircle size={15} />} label="WhatsApp">{m.whatsapp_number || m.phone_number ? <a href={`https://wa.me/${(m.whatsapp_number ?? m.phone_number).replace(/[^\d]/g, "")}`} target="_blank" rel="noreferrer" className="text-[#4d5645] hover:underline">{m.whatsapp_number ?? m.phone_number}</a> : "—"}</Field>
             <Field icon={<Flame size={15} />} label="Holy Ghost baptism">{m.holy_ghost_baptism ? `Yes${m.holy_ghost_baptism_date ? " · " + m.holy_ghost_baptism_date : ""}` : "No"}</Field>
@@ -177,14 +202,14 @@ function EditForm({ m, o, onDone, onCancel }: { m: Member; o: Options; onDone: (
     firstName: m.first_name, lastName: m.last_name, otherNames: m.other_names ?? "", dateOfBirth: m.date_of_birth ?? "",
     gender: m.gender ?? "", programmeId: m.programme_id ?? "", level: m.level ?? "",
     residenceStatus: m.residence_status ?? "", residenceDetail: m.residence_detail ?? "", vacationResidence: m.residence_during_vacation ?? "",
-    cellId: m.cell_id ?? "", holyGhostBaptism: !!m.holy_ghost_baptism, holyGhostBaptismDate: m.holy_ghost_baptism_date ?? "",
+    cellId: m.cell_id ?? "", officerStatus: m.officer_status ?? "", holyGhostBaptism: !!m.holy_ghost_baptism, holyGhostBaptismDate: m.holy_ghost_baptism_date ?? "",
     waterBaptism: !!m.water_baptism, waterBaptismDate: m.water_baptism_date ?? "", phoneNumber: m.phone_number,
     whatsappNumber: m.whatsapp_number ?? "", membershipStatus: m.membership_status, notes: m.notes ?? "",
     departmentIds: m.departments.map((d) => d.id),
   });
   const [err, setErr] = useState<string | null>(null);
   const set = (p: Partial<typeof f>) => setF((s) => ({ ...s, ...p }));
-  const save = useMutation({ mutationFn: () => api.post(`/api/members/${m.id}`, { ...f, gender: f.gender || null }), onSuccess: onDone, onError: (e: Error) => setErr(e.message) });
+  const save = useMutation({ mutationFn: () => api.post(`/api/members/${m.id}`, { ...f, gender: f.gender || null, officerStatus: f.officerStatus || null }), onSuccess: onDone, onError: (e: Error) => setErr(e.message) });
   const toggleDept = (id: string) => set({ departmentIds: f.departmentIds.includes(id) ? f.departmentIds.filter((d) => d !== id) : [...f.departmentIds, id] });
 
   return (
@@ -204,6 +229,7 @@ function EditForm({ m, o, onDone, onCancel }: { m: Member; o: Options; onDone: (
         <L label="WhatsApp"><input className="field" value={f.whatsappNumber} onChange={(e) => set({ whatsappNumber: e.target.value })} /></L>
         <L label="Membership status"><select className="field" value={f.membershipStatus} onChange={(e) => set({ membershipStatus: e.target.value })}>{["visitor", "actual_member", "associate", "alumni"].map((s) => <option key={s} value={s}>{lbl(s)}</option>)}</select></L>
         <L label="Gender"><select className="field" value={f.gender} onChange={(e) => set({ gender: e.target.value })}><option value="">—</option><option value="male">Male</option><option value="female">Female</option></select></L>
+        <L label="Officer status"><select className="field" value={f.officerStatus} onChange={(e) => set({ officerStatus: e.target.value })}><option value="">None</option><option value="deacon">Deacon</option><option value="deaconess">Deaconess</option><option value="elder">Elder</option></select></L>
       </div>
       <L label="Departments">
         <div className="flex flex-wrap gap-2">

@@ -8,6 +8,8 @@ import { Settings } from "./pages/Settings";
 import { Registrations } from "./pages/Registrations";
 import { Members } from "./pages/Members";
 import { MemberProfile } from "./pages/MemberProfile";
+import { Officers } from "./pages/Officers";
+import { Alumni } from "./pages/Alumni";
 import { Attendance } from "./pages/Attendance";
 import { Analytics } from "./pages/Analytics";
 import { Reports } from "./pages/Reports";
@@ -44,6 +46,8 @@ export function App() {
         <Route path="registrations" element={<Registrations />} />
         <Route path="members" element={<Members />} />
         <Route path="members/:id" element={<MemberProfile />} />
+        <Route path="officers" element={<Officers />} />
+        <Route path="alumni" element={<Alumni />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="departments" element={<Departments />} />
         <Route path="departments/:id" element={<DepartmentMembers />} />

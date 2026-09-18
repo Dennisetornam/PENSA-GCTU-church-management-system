@@ -21,7 +21,7 @@ interface Options {
 interface Form {
   firstName: string; lastName: string; otherNames: string; dateOfBirth: string; profileImageKey: string;
   programmeId: string; level: string; residenceStatus: string; residenceDetail: string; vacationResidence: string;
-  departmentIds: string[]; cellId: string; membershipStatus: string;
+  departmentIds: string[]; cellId: string; membershipStatus: string; officerStatus: string;
   holyGhostBaptism: boolean; holyGhostBaptismDate: string; waterBaptism: boolean; waterBaptismDate: string;
   phoneNumber: string; whatsappNumber: string;
 }
@@ -29,7 +29,7 @@ interface Form {
 const EMPTY: Form = {
   firstName: "", lastName: "", otherNames: "", dateOfBirth: "", profileImageKey: "",
   programmeId: "", level: "", residenceStatus: "", residenceDetail: "", vacationResidence: "",
-  departmentIds: [], cellId: "", membershipStatus: "visitor",
+  departmentIds: [], cellId: "", membershipStatus: "visitor", officerStatus: "",
   holyGhostBaptism: false, holyGhostBaptismDate: "", waterBaptism: false, waterBaptismDate: "",
   phoneNumber: "", whatsappNumber: "",
 };
@@ -242,6 +242,9 @@ function StepChurch({ f, set, o }: { f: Form; set: (p: Partial<Form>) => void; o
       </div>
       <div><Label>I identify as a *</Label>
         <Choice options={[["visitor", "Visitor"], ["actual_member", "Member"], ["associate", "Associate"], ["alumni", "Alumni"]]} value={f.membershipStatus} onChange={(v) => set({ membershipStatus: v })} />
+      </div>
+      <div><Label>Officer status (if any)</Label>
+        <Choice options={[["", "None"], ["deacon", "Deacon"], ["deaconess", "Deaconess"], ["elder", "Elder"]]} value={f.officerStatus} onChange={(v) => set({ officerStatus: v })} />
       </div>
     </div>
   );

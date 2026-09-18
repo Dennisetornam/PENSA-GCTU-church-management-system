@@ -43,6 +43,8 @@ export const memberDataSchema = z.object({
   phoneNumber: phone,
   whatsappNumber: optionalPhone,
   membershipStatus: z.enum(["actual_member", "visitor", "associate", "alumni"]),
+  // Optional ordained office in the church (Deacon / Deaconess / Elder).
+  officerStatus: z.union([z.enum(["deacon", "deaconess", "elder"]), z.literal("")]).optional(),
   // Gathering type is chosen by the admin at check-in, not at registration.
   primaryGatheringTypeId: z.string().optional(),
   profileImageKey: z.string().min(1, "profile picture is required"),

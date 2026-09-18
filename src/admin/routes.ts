@@ -6,7 +6,7 @@ import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { approveRegistration, rejectRegistration, NotFoundError, ConflictError } from "../registration/approval";
-import { listMembers, membersForExport, getMember, changeMemberStatus, updateMember } from "../members/repository";
+import { listMembers, membersForExport, listOfficers, getMember, changeMemberStatus, updateMember } from "../members/repository";
 import { normalizeGhanaPhone } from "../registration/schemas";
 import { thumbKeyOf } from "../media/image";
 import { toXlsxSheets } from "../reports/format";
@@ -149,6 +149,12 @@ app.get("/members/export", authorize("members:read"), async (c) => {
   });
 });
 
+// Church officers register — all deacons / deaconesses / elders.
+app.get("/officers", authorize("members:read"), async (c) => {
+  const results = await listOfficers(c.env.DB);
+  return c.json({ results });
+});
+
 app.get("/members/:id", authorize("members:read"), async (c) => {
   const member = await getMember(c.env.DB, c.req.param("id"));
   if (!member) return c.json({ error: "not found" }, 404);
@@ -186,6 +192,7 @@ const memberUpdateSchema = z.object({
   residenceDetail: z.string().max(200).optional().nullable(),
   vacationResidence: z.string().max(200).optional().nullable(),
   cellId: z.string().optional().nullable(),
+  officerStatus: z.enum(["deacon", "deaconess", "elder"]).optional().nullable(),
   holyGhostBaptism: z.boolean(),
   holyGhostBaptismDate: z.string().optional().nullable(),
   waterBaptism: z.boolean(),

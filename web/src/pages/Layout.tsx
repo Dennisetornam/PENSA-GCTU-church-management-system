@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, UserPlus, CalendarCheck, Boxes, CircleDot,
-  FileBarChart, LineChart, Settings, LogOut, Search, Wallet, Cake, Landmark, Menu, X,
+  FileBarChart, LineChart, Settings, LogOut, Search, Wallet, Cake, Landmark, Menu, X, ShieldCheck, GraduationCap,
 } from "lucide-react";
 import { useAuth, roleLabel } from "../auth";
 import { Wordmark } from "../brand";
@@ -11,6 +11,8 @@ import { Avatar } from "../ui";
 const NAV = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/dashboard/members", label: "Members", icon: Users },
+  { to: "/dashboard/officers", label: "Officers", icon: ShieldCheck },
+  { to: "/dashboard/alumni", label: "Alumni", icon: GraduationCap },
   { to: "/dashboard/registrations", label: "Registrations", icon: UserPlus },
   { to: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck },
   { to: "/dashboard/departments", label: "Departments", icon: Boxes },
