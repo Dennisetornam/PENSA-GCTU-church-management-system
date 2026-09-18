@@ -6,5 +6,5 @@ ALTER TABLE members ADD COLUMN officer_status TEXT
     CHECK (officer_status IN ('deacon','deaconess','elder'));
 
 -- Fast lookup of the (small) set of officers.
-CREATE INDEX ix_members_officer ON members(officer_status)
+CREATE INDEX IF NOT EXISTS ix_members_officer ON members(officer_status)
     WHERE officer_status IS NOT NULL AND deleted_at IS NULL;
