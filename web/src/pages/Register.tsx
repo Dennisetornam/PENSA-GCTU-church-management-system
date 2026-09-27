@@ -6,7 +6,6 @@ import { api } from "../api";
 import { Wordmark } from "../brand";
 import { Spinner } from "../ui";
 import { resizeImage } from "../imageResize";
-import { useCampus } from "../campus";
 
 // Cloudflare Turnstile TEST site key (always passes). Swap for the real key at launch.
 const TURNSTILE_SITEKEY = "1x00000000000000000000AA";
@@ -170,9 +169,6 @@ export function Register() {
           </div>
         </div>
         <p className="mt-5 text-center text-xs text-ink-soft/50">Your details are kept safely and reviewed by a leader before approval.</p>
-        {o?.campus?.features.helpDesk && (
-          <p className="mt-2 text-center text-xs text-ink-soft/60">Need help or have a concern? <a href="/help" className="font-medium text-gold hover:underline">Reach the Help Desk</a></p>
-        )}
       </div>
     </div>
   );
@@ -364,16 +360,6 @@ function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange:
   );
 }
 
-function HelpDeskLink() {
-  const campus = useCampus();
-  if (!campus.features.helpDesk) return null;
-  return (
-    <p className="mt-4 border-t border-ink/[0.06] pt-4 text-xs text-ink-soft/60">
-      Have a question or concern? <a href="/help" className="font-medium text-gold hover:underline">Reach the Help Desk</a>
-    </p>
-  );
-}
-
 function Confirmation({ reference }: { reference: string }) {
   return (
     <div className="grain candlelight grid min-h-screen place-items-center bg-ivory px-5">
@@ -386,7 +372,6 @@ function Confirmation({ reference }: { reference: string }) {
           <div className="font-display text-2xl font-semibold text-ink">{reference}</div>
         </div>
         <p className="mt-6 text-xs text-ink-soft/55">Next time you come to church, just give your name at the desk to be checked in.</p>
-        <HelpDeskLink />
       </motion.div>
     </div>
   );

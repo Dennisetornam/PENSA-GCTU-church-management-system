@@ -1,22 +1,25 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
-import { KeyRound, Users2, QrCode, Copy, ExternalLink, ShieldCheck, UserPlus, Ban, RotateCcw, Check } from "lucide-react";
+import { KeyRound, Users2, QrCode, Copy, ExternalLink, ShieldCheck, UserPlus, Ban, RotateCcw, Check, LifeBuoy } from "lucide-react";
 import { api } from "../api";
 import { useAuth, roleLabel } from "../auth";
+import { useCampus } from "../campus";
 import { Spinner, Badge, Avatar, PasswordInput } from "../ui";
 
 const TABS = [
   { key: "account", label: "Account", icon: KeyRound },
   { key: "team", label: "Team", icon: Users2 },
   { key: "share", label: "Share registration", icon: QrCode },
+  { key: "helpdesk", label: "Help Desk link", icon: LifeBuoy },
 ];
 
 export function Settings() {
   const { me } = useAuth();
+  const { features } = useCampus();
   const canManage = me?.role === "super_admin" || me?.role === "church_admin";
   const [tab, setTab] = useState("account");
-  const tabs = TABS.filter((t) => t.key !== "team" || canManage);
+  const tabs = TABS.filter((t) => (t.key !== "team" || canManage) && (t.key !== "helpdesk" || features.helpDesk));
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -35,6 +38,7 @@ export function Settings() {
       {tab === "account" && <ChangePassword />}
       {tab === "team" && canManage && <Team />}
       {tab === "share" && <Share />}
+      {tab === "helpdesk" && features.helpDesk && <HelpDeskShare />}
     </div>
   );
 }
@@ -142,6 +146,38 @@ function AddUser({ onClose, onDone }: { onClose: () => void; onDone: () => void 
               {m.isPending ? <Spinner /> : "Create"}
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HelpDeskShare() {
+  const url = `${window.location.origin}/help`;
+  const [copied, setCopied] = useState(false);
+  const copy = () => { navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1600); };
+  return (
+    <div className="grid gap-5 lg:grid-cols-[auto_1fr]">
+      <div className="card grid place-items-center p-7">
+        <div className="rounded-2xl bg-white p-4 shadow-soft">
+          <QRCodeSVG value={url} size={184} fgColor="#211B33" level="M" />
+        </div>
+        <div className="mt-3 text-center text-xs text-ink-soft/55">Scan to open the Help Desk</div>
+      </div>
+      <div className="card p-7">
+        <h3 className="font-display text-2xl text-ink">Share the Help Desk</h3>
+        <p className="mt-2 text-ink-soft/70">
+          Members register only once — they don&apos;t need to register again to reach the Help Desk. Share this link
+          (or print the QR) in the church group so everyone keeps it. Anytime they have a question or concern, they open
+          it, write in (anonymously if they wish), and it lands in your <strong className="text-ink">Help Desk</strong> inbox.
+        </p>
+        <div className="mt-5 flex items-center gap-2 rounded-xl border border-ink/12 bg-ivory px-4 py-3">
+          <code className="flex-1 truncate text-sm text-ink">{url}</code>
+          <button className="btn-ghost !px-3" onClick={copy}>{copied ? <><Check size={15} /> Copied</> : <><Copy size={15} /> Copy</>}</button>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <a href={url} target="_blank" rel="noreferrer" className="btn-primary"><ExternalLink size={16} /> Open Help Desk</a>
+          <button className="btn-ghost" onClick={() => window.print()}>Print QR</button>
         </div>
       </div>
     </div>
