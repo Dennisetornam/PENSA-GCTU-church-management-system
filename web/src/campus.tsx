@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 
@@ -31,7 +31,11 @@ export function CampusProvider({ children }: { children: ReactNode }) {
     queryFn: () => api.get<{ campus: Campus }>("/config"),
     staleTime: Infinity,
   });
-  return <CampusCtx.Provider value={data?.campus ?? DEFAULT}>{children}</CampusCtx.Provider>;
+  const campus = data?.campus ?? DEFAULT;
+  useEffect(() => {
+    if (campus.id !== "gctu" || campus.name !== "PENSA") document.title = `${campus.name} · Church Management`;
+  }, [campus.name, campus.id]);
+  return <CampusCtx.Provider value={campus}>{children}</CampusCtx.Provider>;
 }
 
 export const useCampus = () => useContext(CampusCtx);

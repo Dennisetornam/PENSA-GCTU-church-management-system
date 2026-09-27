@@ -4,9 +4,11 @@ import { motion } from "motion/react";
 import { useAuth } from "../auth";
 import { Logo, Wordmark } from "../brand";
 import { Spinner, PasswordInput } from "../ui";
+import { useCampus } from "../campus";
 
 export function Login() {
   const { login } = useAuth();
+  const campus = useCampus();
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,7 +50,7 @@ export function Login() {
               Every member, <span className="italic text-gold-soft">known</span> &amp; cared for.
             </h1>
             <p className="mt-6 max-w-sm text-ivory-soft/70">
-              The shepherd&apos;s desk for PENSA GCTU — registrations, attendance and the life of the fellowship, in one calm place.
+              The shepherd&apos;s desk for {campus.name} — registrations, attendance and the life of the fellowship, in one calm place.
             </p>
           </motion.div>
           <div className="flex items-center gap-3 text-sm text-ivory-soft/55">
@@ -77,7 +79,7 @@ export function Login() {
             <div>
               <label className="label" htmlFor="email">Email or username</label>
               <input id="email" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} required value={email}
-                onChange={(e) => setEmail(e.target.value)} className="field" placeholder="you@pensagctu.org" />
+                onChange={(e) => setEmail(e.target.value)} className="field" placeholder="you@church.org" />
             </div>
             <div>
               <label className="label" htmlFor="password">Password</label>
@@ -92,7 +94,7 @@ export function Login() {
 
           <div className="mt-8 flex items-center gap-3 text-xs text-ink-soft/55">
             <div className="gold-rule flex-1" />
-            <span>PENSA GCTU · {new Date().getFullYear()}</span>
+            <span>{campus.name} · {new Date().getFullYear()}</span>
             <div className="gold-rule flex-1" />
           </div>
         </motion.div>
