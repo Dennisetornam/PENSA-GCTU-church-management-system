@@ -20,6 +20,8 @@ export interface CampusFeatures {
   noDepartmentOption: boolean;
   /** Registration picks the hostel from a managed list instead of free text. */
   hostelPicker: boolean;
+  /** This campus runs cells (small groups). When off, cells are hidden and not required. */
+  cells: boolean;
 }
 
 export interface CampusConfig {
@@ -29,20 +31,22 @@ export interface CampusConfig {
   features: CampusFeatures;
 }
 
-const ALL_OFF: CampusFeatures = {
+// The optional KNUST features, all off. `cells` is handled per-campus below
+// because GCTU runs cells (true) while KNUST does not (false).
+const ALL_OFF = {
   pickupPoints: false,
   pdp: false,
   helpDesk: false,
   noDepartmentOption: false,
   hostelPicker: false,
-};
+} as const;
 
 const CONFIGS: Record<CampusId, CampusConfig> = {
   gctu: {
     id: "gctu",
     name: "PENSA GCTU",
     shortName: "GCTU",
-    features: { ...ALL_OFF },
+    features: { ...ALL_OFF, cells: true },
   },
   knust: {
     id: "knust",
@@ -54,6 +58,7 @@ const CONFIGS: Record<CampusId, CampusConfig> = {
       helpDesk: true,
       noDepartmentOption: true,
       hostelPicker: true,
+      cells: false,
     },
   },
 };

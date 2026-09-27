@@ -21,7 +21,7 @@ const NAV: NavItem[] = [
   { to: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck },
   { to: "/dashboard/pdp", label: "Discipleship (PDP)", icon: Sprout, feature: "pdp" },
   { to: "/dashboard/departments", label: "Departments", icon: Boxes },
-  { to: "/dashboard/cells", label: "Cells", icon: CircleDot },
+  { to: "/dashboard/cells", label: "Cells", icon: CircleDot, feature: "cells" },
   { to: "/dashboard/pickup-points", label: "Pick-up points", icon: Bus, feature: "pickupPoints" },
   { to: "/dashboard/birthdays", label: "Birthdays", icon: Cake },
   { to: "/dashboard/help-desk", label: "Help Desk", icon: LifeBuoy, feature: "helpDesk" },

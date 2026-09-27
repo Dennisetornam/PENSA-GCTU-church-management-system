@@ -6,11 +6,12 @@ import { api } from "../api";
 import { Wordmark } from "../brand";
 import { Spinner } from "../ui";
 import { resizeImage } from "../imageResize";
+import { useCampus } from "../campus";
 
 // Cloudflare Turnstile TEST site key (always passes). Swap for the real key at launch.
 const TURNSTILE_SITEKEY = "1x00000000000000000000AA";
 
-interface CampusFeatures { pickupPoints: boolean; pdp: boolean; helpDesk: boolean; noDepartmentOption: boolean; hostelPicker: boolean; }
+interface CampusFeatures { pickupPoints: boolean; pdp: boolean; helpDesk: boolean; noDepartmentOption: boolean; hostelPicker: boolean; cells: boolean; }
 interface Options {
   programmes: { id: string; name: string }[];
   departments: { id: string; name: string }[];
@@ -103,7 +104,7 @@ export function Register() {
   const valid: Record<number, boolean> = {
     0: !!(f.firstName && f.lastName && f.dateOfBirth && f.profileImageKey),
     1: !!(f.programmeId && f.level && f.residenceStatus && f.residenceDetail && f.vacationResidence),
-    2: !!((f.departmentIds.length || f.noDepartment) && f.cellId && f.membershipStatus),
+    2: !!((f.departmentIds.length || f.noDepartment) && (o?.campus?.features.cells ? f.cellId : true) && f.membershipStatus),
     3: true,
     4: phoneDigits(f.phoneNumber).length === 10,
     5: !!token,
@@ -271,9 +272,11 @@ function StepChurch({ f, set, o }: { f: Form; set: (p: Partial<Form>) => void; o
           </label>
         )}
       </div>
-      <div><Label>Cell *</Label>
-        <Choice options={o.cells.map((c) => [c.id, c.name] as [string, string])} value={f.cellId} onChange={(v) => set({ cellId: v })} />
-      </div>
+      {o.campus?.features.cells && (
+        <div><Label>Cell *</Label>
+          <Choice options={o.cells.map((c) => [c.id, c.name] as [string, string])} value={f.cellId} onChange={(v) => set({ cellId: v })} />
+        </div>
+      )}
       <div><Label>I identify as a *</Label>
         <Choice options={[["visitor", "Visitor"], ["actual_member", "Member"], ["associate", "Associate"], ["alumni", "Alumni"]]} value={f.membershipStatus} onChange={(v) => set({ membershipStatus: v })} />
       </div>
@@ -361,6 +364,16 @@ function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange:
   );
 }
 
+function HelpDeskLink() {
+  const campus = useCampus();
+  if (!campus.features.helpDesk) return null;
+  return (
+    <p className="mt-4 border-t border-ink/[0.06] pt-4 text-xs text-ink-soft/60">
+      Have a question or concern? <a href="/help" className="font-medium text-gold hover:underline">Reach the Help Desk</a>
+    </p>
+  );
+}
+
 function Confirmation({ reference }: { reference: string }) {
   return (
     <div className="grain candlelight grid min-h-screen place-items-center bg-ivory px-5">
@@ -373,6 +386,7 @@ function Confirmation({ reference }: { reference: string }) {
           <div className="font-display text-2xl font-semibold text-ink">{reference}</div>
         </div>
         <p className="mt-6 text-xs text-ink-soft/55">Next time you come to church, just give your name at the desk to be checked in.</p>
+        <HelpDeskLink />
       </motion.div>
     </div>
   );

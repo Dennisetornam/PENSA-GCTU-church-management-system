@@ -8,6 +8,7 @@ export interface CampusFeatures {
   helpDesk: boolean;
   noDepartmentOption: boolean;
   hostelPicker: boolean;
+  cells: boolean;
 }
 export interface Campus {
   id: string;
@@ -20,7 +21,7 @@ const DEFAULT: Campus = {
   id: "gctu",
   name: "PENSA",
   shortName: "",
-  features: { pickupPoints: false, pdp: false, helpDesk: false, noDepartmentOption: false, hostelPicker: false },
+  features: { pickupPoints: false, pdp: false, helpDesk: false, noDepartmentOption: false, hostelPicker: false, cells: true },
 };
 
 const CampusCtx = createContext<Campus>(DEFAULT);

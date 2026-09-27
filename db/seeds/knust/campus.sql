@@ -43,3 +43,6 @@ ON CONFLICT(id) DO NOTHING;
 INSERT INTO settings (key, value) VALUES
   ('org.name', '"PENSA KNUST – Obuasi Campus"')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+
+-- KNUST does not run cells — deactivate the shared defaults so they never show. -
+UPDATE cells SET is_active = 0;

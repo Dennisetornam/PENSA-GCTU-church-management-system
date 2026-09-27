@@ -33,6 +33,7 @@ describe("KNUST campus features", () => {
     const o = await (await pub("/register/options")).json() as { campus: { id: string; features: Record<string, boolean> }; hostels: unknown[]; pickupPoints: unknown[] };
     expect(o.campus.id).toBe("knust");
     expect(o.campus.features.pickupPoints).toBe(true);
+    expect(o.campus.features.cells).toBe(false); // KNUST does not run cells
     expect(o.hostels.length).toBe(2);
     expect(o.pickupPoints.length).toBe(2);
   });
@@ -68,8 +69,9 @@ describe("GCTU campus (features off)", () => {
   beforeEach(() => { env.CAMPUS = "gctu"; });
 
   it("hides hostels/pick-up points from options and 404s the campus endpoints", async () => {
-    const o = await (await pub("/register/options")).json() as { campus: { id: string }; hostels: unknown[]; pickupPoints: unknown[] };
+    const o = await (await pub("/register/options")).json() as { campus: { id: string; features: Record<string, boolean> }; hostels: unknown[]; pickupPoints: unknown[] };
     expect(o.campus.id).toBe("gctu");
+    expect(o.campus.features.cells).toBe(true); // GCTU runs cells
     expect(o.hostels.length).toBe(0);
     expect(o.pickupPoints.length).toBe(0);
     expect((await req("/api/pickup-points")).status).toBe(404);

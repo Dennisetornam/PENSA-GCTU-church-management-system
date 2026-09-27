@@ -37,7 +37,8 @@ export const memberDataSchema = z.object({
   departmentIds: z.array(z.string().min(1)).default([]),
   // Deliberate opt-out of joining a department (KNUST campus).
   noDepartment: z.boolean().optional(),
-  cellId: z.string().min(1),
+  // Cell is required only on campuses that run cells (enforced in the submit route).
+  cellId: z.string().optional().or(z.literal("")),
   // Bus pick-up point (KNUST campus). Optional.
   pickupPointId: z.string().optional().nullable(),
   holyGhostBaptism: z.boolean(),

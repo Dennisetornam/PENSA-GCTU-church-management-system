@@ -5,6 +5,7 @@ import { ArrowLeft, Pencil, Check, X, Phone, MessageCircle, GraduationCap, Home,
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { api } from "../api";
 import { Spinner, Badge, Avatar } from "../ui";
+import { useCampus } from "../campus";
 
 interface Member {
   id: string; member_code: string | null; first_name: string; last_name: string; other_names: string | null;
@@ -208,6 +209,7 @@ function EditForm({ m, o, onDone, onCancel, onDeleted }: { m: Member; o: Options
     departmentIds: m.departments.map((d) => d.id),
   });
   const [err, setErr] = useState<string | null>(null);
+  const campus = useCampus();
   const set = (p: Partial<typeof f>) => setF((s) => ({ ...s, ...p }));
   const save = useMutation({ mutationFn: () => api.post(`/api/members/${m.id}`, { ...f, gender: f.gender || null, officerStatus: f.officerStatus || null }), onSuccess: onDone, onError: (e: Error) => setErr(e.message) });
   const del = useMutation({ mutationFn: () => api.del(`/api/members/${m.id}`), onSuccess: onDeleted, onError: (e: Error) => setErr(e.message) });
@@ -225,7 +227,7 @@ function EditForm({ m, o, onDone, onCancel, onDeleted }: { m: Member; o: Options
         <L label="Residence"><select className="field" value={f.residenceStatus} onChange={(e) => set({ residenceStatus: e.target.value })}><option value="">—</option><option value="hostel_resident">Hostel resident</option><option value="non_resident">Non-resident</option></select></L>
         <L label={f.residenceStatus === "non_resident" ? "Location" : "Hostel name"}><input className="field" value={f.residenceDetail} onChange={(e) => set({ residenceDetail: e.target.value })} /></L>
         <L label="Vacation residence"><input className="field" value={f.vacationResidence} onChange={(e) => set({ vacationResidence: e.target.value })} /></L>
-        <L label="Cell"><select className="field" value={f.cellId} onChange={(e) => set({ cellId: e.target.value })}><option value="">—</option>{o.cells.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></L>
+        {campus.features.cells && <L label="Cell"><select className="field" value={f.cellId} onChange={(e) => set({ cellId: e.target.value })}><option value="">—</option>{o.cells.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></L>}
         <L label="Phone"><input className="field" value={f.phoneNumber} onChange={(e) => set({ phoneNumber: e.target.value })} /></L>
         <L label="WhatsApp"><input className="field" value={f.whatsappNumber} onChange={(e) => set({ whatsappNumber: e.target.value })} /></L>
         <L label="Membership status"><select className="field" value={f.membershipStatus} onChange={(e) => set({ membershipStatus: e.target.value })}>{["visitor", "actual_member", "associate", "alumni"].map((s) => <option key={s} value={s}>{lbl(s)}</option>)}</select></L>

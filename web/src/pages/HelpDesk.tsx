@@ -55,6 +55,7 @@ export function HelpDesk() {
 function TicketCard({ t, onChanged }: { t: Ticket; onChanged: () => void }) {
   const [notes, setNotes] = useState(t.admin_notes ?? "");
   const [dirty, setDirty] = useState(false);
+  const [reply, setReply] = useState("");
   const mutate = useMutation({
     mutationFn: (body: { status?: string; adminNotes?: string }) => api.patch(`/api/help-desk/${t.id}`, body),
     onSuccess: onChanged,
@@ -84,6 +85,22 @@ function TicketCard({ t, onChanged }: { t: Ticket; onChanged: () => void }) {
           </>
         )}
       </div>
+
+      {/* Reply to the member via their own phone (SMS) or WhatsApp */}
+      {!t.is_anonymous && t.contact ? (
+        <div className="mt-3 rounded-xl border border-gold/25 bg-gold/[0.05] p-3">
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-soft/60">Reply to {t.name || "member"}</div>
+          <textarea className="field min-h-14 text-sm" value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type your reply, then send it via SMS or WhatsApp…" />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <a href={`sms:${t.contact}${reply ? `?body=${encodeURIComponent(reply)}` : ""}`} className="btn-gold !py-2 text-sm"><Phone size={15} /> Reply via SMS</a>
+            {wa && <a href={`https://wa.me/${wa}${reply ? `?text=${encodeURIComponent(reply)}` : ""}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-sage/40 px-3.5 py-2 text-sm font-medium text-[#4d5645] transition hover:bg-sage/10"><MessageCircle size={15} /> Reply via WhatsApp</a>}
+          </div>
+        </div>
+      ) : t.is_anonymous ? (
+        <p className="mt-3 text-xs text-ink-soft/55">This message was sent anonymously — there's no contact to reply to.</p>
+      ) : (
+        <p className="mt-3 text-xs text-ink-soft/55">No contact was provided, so a direct reply isn't possible.</p>
+      )}
 
       <textarea
         className="field mt-3 min-h-16 text-sm" placeholder="Internal notes (what was done / follow-up)…"
