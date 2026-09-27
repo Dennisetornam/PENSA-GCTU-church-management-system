@@ -14,6 +14,7 @@ import type { Env, Variables } from "../types";
 import { rateLimit, auditViolation } from "../rate-limit/middleware";
 import { LIMIT_RULES } from "../rate-limit/config";
 import { verifyTurnstile } from "../auth/turnstile";
+import { campusConfig } from "../config/campus";
 import { getRegistrationOptions } from "./options";
 import { draftSchema, submitSchema } from "./schemas";
 import { getDraft, upsertDraft, attachDraftImage, submitRegistration } from "./repository";
@@ -64,10 +65,11 @@ app.onError((err, c) => {
 
 // Dropdown options (+ the public Turnstile site key for the form)
 app.get("/options", async (c) => {
-  const options = await getRegistrationOptions(c.env.DB);
+  const campus = campusConfig(c.env);
+  const options = await getRegistrationOptions(c.env.DB, campus);
   // Default to Cloudflare's "always passes" TEST site key until a real one is set.
   const turnstileSiteKey = (c.env.TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA").trim();
-  return c.json({ ...options, turnstileSiteKey });
+  return c.json({ ...options, campus, turnstileSiteKey });
 });
 
 // Save / update draft

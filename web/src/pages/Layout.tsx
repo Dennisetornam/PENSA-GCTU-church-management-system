@@ -3,21 +3,28 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, UserPlus, CalendarCheck, Boxes, CircleDot,
   FileBarChart, LineChart, Settings, LogOut, Search, Wallet, Cake, Landmark, Menu, X, ShieldCheck, GraduationCap,
+  Bus, LifeBuoy, Sprout,
 } from "lucide-react";
 import { useAuth, roleLabel } from "../auth";
 import { Wordmark } from "../brand";
 import { Avatar } from "../ui";
+import { useCampus, type CampusFeatures } from "../campus";
 
-const NAV = [
+type NavItem = { to: string; label: string; icon: typeof Users; end?: boolean; roles?: string[]; feature?: keyof CampusFeatures };
+
+const NAV: NavItem[] = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/dashboard/members", label: "Members", icon: Users },
   { to: "/dashboard/officers", label: "Officers", icon: ShieldCheck },
   { to: "/dashboard/alumni", label: "Alumni", icon: GraduationCap },
   { to: "/dashboard/registrations", label: "Registrations", icon: UserPlus },
   { to: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck },
+  { to: "/dashboard/pdp", label: "Discipleship (PDP)", icon: Sprout, feature: "pdp" },
   { to: "/dashboard/departments", label: "Departments", icon: Boxes },
   { to: "/dashboard/cells", label: "Cells", icon: CircleDot },
+  { to: "/dashboard/pickup-points", label: "Pick-up points", icon: Bus, feature: "pickupPoints" },
   { to: "/dashboard/birthdays", label: "Birthdays", icon: Cake },
+  { to: "/dashboard/help-desk", label: "Help Desk", icon: LifeBuoy, feature: "helpDesk" },
   { to: "/dashboard/finance", label: "Finance", icon: Wallet, roles: ["super_admin", "church_admin"] },
   { to: "/dashboard/quota", label: "Quota", icon: Landmark, roles: ["super_admin", "church_admin"] },
   { to: "/dashboard/reports", label: "Reports", icon: FileBarChart },
@@ -26,12 +33,12 @@ const NAV = [
 ];
 
 // Shared nav panel — rendered in the desktop sidebar and the mobile drawer.
-function NavPanel({ role, onNavigate, onSignOut }: { role: string; onNavigate?: () => void; onSignOut: () => void }) {
+function NavPanel({ role, features, onNavigate, onSignOut }: { role: string; features: CampusFeatures; onNavigate?: () => void; onSignOut: () => void }) {
   return (
     <>
       <div className="px-6 py-7"><Wordmark subtle /></div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3">
-        {NAV.filter((n) => !n.roles || n.roles.includes(role)).map(({ to, label, icon: Icon, end }) => (
+        {NAV.filter((n) => (!n.roles || n.roles.includes(role)) && (!n.feature || features[n.feature])).map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -72,6 +79,7 @@ function NavPanel({ role, onNavigate, onSignOut }: { role: string; onNavigate?: 
 
 export function Layout() {
   const { me, logout } = useAuth();
+  const { features } = useCampus();
   const nav = useNavigate();
   const [drawer, setDrawer] = useState(false);
   const role = me?.role ?? "";
@@ -81,7 +89,7 @@ export function Layout() {
     <div className="grain min-h-screen bg-ivory lg:grid lg:grid-cols-[17rem_1fr]">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-vespers-deep/20 bg-vespers-deep text-ivory-soft lg:flex">
-        <NavPanel role={role} onSignOut={signOut} />
+        <NavPanel role={role} features={features} onSignOut={signOut} />
       </aside>
 
       {/* Mobile drawer */}
@@ -96,7 +104,7 @@ export function Layout() {
             >
               <X size={18} />
             </button>
-            <NavPanel role={role} onNavigate={() => setDrawer(false)} onSignOut={signOut} />
+            <NavPanel role={role} features={features} onNavigate={() => setDrawer(false)} onSignOut={signOut} />
           </aside>
         </div>
       )}

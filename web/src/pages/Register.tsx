@@ -10,18 +10,22 @@ import { resizeImage } from "../imageResize";
 // Cloudflare Turnstile TEST site key (always passes). Swap for the real key at launch.
 const TURNSTILE_SITEKEY = "1x00000000000000000000AA";
 
+interface CampusFeatures { pickupPoints: boolean; pdp: boolean; helpDesk: boolean; noDepartmentOption: boolean; hostelPicker: boolean; }
 interface Options {
   programmes: { id: string; name: string }[];
   departments: { id: string; name: string }[];
   cells: { id: string; name: string }[];
   gatheringTypes: { id: string; name: string }[];
+  hostels: { id: string; name: string }[];
+  pickupPoints: { id: string; name: string; departure_time: string | null }[];
+  campus?: { name: string; features: CampusFeatures };
   turnstileSiteKey?: string;
 }
 
 interface Form {
   firstName: string; lastName: string; otherNames: string; dateOfBirth: string; profileImageKey: string;
   programmeId: string; level: string; residenceStatus: string; residenceDetail: string; vacationResidence: string;
-  departmentIds: string[]; cellId: string; membershipStatus: string; officerStatus: string;
+  departmentIds: string[]; noDepartment: boolean; cellId: string; pickupPointId: string; membershipStatus: string; officerStatus: string;
   holyGhostBaptism: boolean; holyGhostBaptismDate: string; waterBaptism: boolean; waterBaptismDate: string;
   phoneNumber: string; whatsappNumber: string;
 }
@@ -29,7 +33,7 @@ interface Form {
 const EMPTY: Form = {
   firstName: "", lastName: "", otherNames: "", dateOfBirth: "", profileImageKey: "",
   programmeId: "", level: "", residenceStatus: "", residenceDetail: "", vacationResidence: "",
-  departmentIds: [], cellId: "", membershipStatus: "visitor", officerStatus: "",
+  departmentIds: [], noDepartment: false, cellId: "", pickupPointId: "", membershipStatus: "visitor", officerStatus: "",
   holyGhostBaptism: false, holyGhostBaptismDate: "", waterBaptism: false, waterBaptismDate: "",
   phoneNumber: "", whatsappNumber: "",
 };
@@ -99,7 +103,7 @@ export function Register() {
   const valid: Record<number, boolean> = {
     0: !!(f.firstName && f.lastName && f.dateOfBirth && f.profileImageKey),
     1: !!(f.programmeId && f.level && f.residenceStatus && f.residenceDetail && f.vacationResidence),
-    2: !!(f.departmentIds.length && f.cellId && f.membershipStatus),
+    2: !!((f.departmentIds.length || f.noDepartment) && f.cellId && f.membershipStatus),
     3: true,
     4: phoneDigits(f.phoneNumber).length === 10,
     5: !!token,
@@ -165,6 +169,9 @@ export function Register() {
           </div>
         </div>
         <p className="mt-5 text-center text-xs text-ink-soft/50">Your details are kept safely and reviewed by a leader before approval.</p>
+        {o?.campus?.features.helpDesk && (
+          <p className="mt-2 text-center text-xs text-ink-soft/60">Need help or have a concern? <a href="/help" className="font-medium text-gold hover:underline">Reach the Help Desk</a></p>
+        )}
       </div>
     </div>
   );
@@ -213,12 +220,31 @@ function StepAcademic({ f, set, o }: { f: Form; set: (p: Partial<Form>) => void;
         <Choice options={[["hostel_resident", "Hostel resident"], ["non_resident", "Non-resident"]]} value={f.residenceStatus} onChange={(v) => set({ residenceStatus: v, residenceDetail: "" })} />
       </div>
       {f.residenceStatus === "hostel_resident" && (
-        <div><Label>Name of hostel *</Label><input className="field" value={f.residenceDetail} onChange={(e) => set({ residenceDetail: e.target.value })} placeholder="e.g. Pentecost Hall" /></div>
+        o.campus?.features.hostelPicker && o.hostels.length > 0 ? (
+          <div><Label>Name of hostel *</Label>
+            <select className="field" value={f.residenceDetail} onChange={(e) => set({ residenceDetail: e.target.value })}>
+              <option value="">Select your hostel…</option>
+              {o.hostels.map((h) => <option key={h.id} value={h.name}>{h.name}</option>)}
+            </select>
+          </div>
+        ) : (
+          <div><Label>Name of hostel *</Label><input className="field" value={f.residenceDetail} onChange={(e) => set({ residenceDetail: e.target.value })} placeholder="e.g. Pentecost Hall" /></div>
+        )
       )}
       {f.residenceStatus === "non_resident" && (
         <div><Label>Where do you stay? (location) *</Label><input className="field" value={f.residenceDetail} onChange={(e) => set({ residenceDetail: e.target.value })} placeholder="e.g. Madina, Accra" /></div>
       )}
       <div><Label>Where do you stay during vacation? *</Label><input className="field" value={f.vacationResidence} onChange={(e) => set({ vacationResidence: e.target.value })} placeholder="e.g. Kumasi" /></div>
+
+      {o.campus?.features.pickupPoints && o.pickupPoints.length > 0 && (
+        <div><Label>Bus pick-up point</Label>
+          <select className="field" value={f.pickupPointId} onChange={(e) => set({ pickupPointId: e.target.value })}>
+            <option value="">I won't be using the bus</option>
+            {o.pickupPoints.map((p) => <option key={p.id} value={p.id}>{p.name}{p.departure_time ? ` · ${p.departure_time}` : ""}</option>)}
+          </select>
+          <p className="mt-1 text-xs text-ink-soft/55">Where would you like to board the church bus?</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -227,15 +253,23 @@ function StepChurch({ f, set, o }: { f: Form; set: (p: Partial<Form>) => void; o
   const toggleDept = (id: string) => set({ departmentIds: f.departmentIds.includes(id) ? f.departmentIds.filter((d) => d !== id) : [...f.departmentIds, id] });
   return (
     <div className="space-y-4">
-      <div><Label>Department(s) you serve in *</Label>
-        <div className="flex flex-wrap gap-2">
-          {o.departments.map((d) => (
-            <button key={d.id} type="button" onClick={() => toggleDept(d.id)}
-              className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${f.departmentIds.includes(d.id) ? "border-gold bg-gold/12 text-[#8a6a25]" : "border-ink/15 text-ink-soft hover:border-ink/30"}`}>
-              {f.departmentIds.includes(d.id) && <Check size={13} className="mr-1 inline" />}{d.name}
-            </button>
-          ))}
-        </div>
+      <div><Label>Department(s) you serve in {f.noDepartment ? "" : "*"}</Label>
+        {!f.noDepartment && (
+          <div className="flex flex-wrap gap-2">
+            {o.departments.map((d) => (
+              <button key={d.id} type="button" onClick={() => toggleDept(d.id)}
+                className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${f.departmentIds.includes(d.id) ? "border-gold bg-gold/12 text-[#8a6a25]" : "border-ink/15 text-ink-soft hover:border-ink/30"}`}>
+                {f.departmentIds.includes(d.id) && <Check size={13} className="mr-1 inline" />}{d.name}
+              </button>
+            ))}
+          </div>
+        )}
+        {o.campus?.features.noDepartmentOption && (
+          <label className="mt-2.5 flex cursor-pointer items-center gap-2 text-sm text-ink-soft">
+            <input type="checkbox" checked={f.noDepartment} onChange={(e) => set({ noDepartment: e.target.checked, departmentIds: e.target.checked ? [] : f.departmentIds })} />
+            I'd prefer not to join a department for now
+          </label>
+        )}
       </div>
       <div><Label>Cell *</Label>
         <Choice options={o.cells.map((c) => [c.id, c.name] as [string, string])} value={f.cellId} onChange={(v) => set({ cellId: v })} />

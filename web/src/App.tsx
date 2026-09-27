@@ -10,6 +10,11 @@ import { Members } from "./pages/Members";
 import { MemberProfile } from "./pages/MemberProfile";
 import { Officers } from "./pages/Officers";
 import { Alumni } from "./pages/Alumni";
+import { PickupPoints } from "./pages/PickupPoints";
+import { HelpDesk } from "./pages/HelpDesk";
+import { HelpDeskPublic } from "./pages/HelpDeskPublic";
+import { PDP } from "./pages/PDP";
+import { useCampus } from "./campus";
 import { Attendance } from "./pages/Attendance";
 import { Analytics } from "./pages/Analytics";
 import { Reports } from "./pages/Reports";
@@ -30,11 +35,13 @@ function Splash() {
 
 export function App() {
   const { me, loading } = useAuth();
+  const { features } = useCampus();
 
   return (
     <Routes>
       {/* Public */}
       <Route path="/register" element={<Register />} />
+      <Route path="/help" element={<HelpDeskPublic />} />
 
       {/* Auth-gated below */}
       <Route path="/login" element={loading ? <Splash /> : me ? <Navigate to="/dashboard" replace /> : <Login />} />
@@ -48,6 +55,9 @@ export function App() {
         <Route path="members/:id" element={<MemberProfile />} />
         <Route path="officers" element={<Officers />} />
         <Route path="alumni" element={<Alumni />} />
+        {features.pickupPoints && <Route path="pickup-points" element={<PickupPoints />} />}
+        {features.helpDesk && <Route path="help-desk" element={<HelpDesk />} />}
+        {features.pdp && <Route path="pdp" element={<PDP />} />}
         <Route path="attendance" element={<Attendance />} />
         <Route path="departments" element={<Departments />} />
         <Route path="departments/:id" element={<DepartmentMembers />} />

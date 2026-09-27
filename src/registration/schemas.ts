@@ -34,8 +34,12 @@ export const memberDataSchema = z.object({
   residenceStatus: z.enum(["hostel_resident", "non_resident"]),
   residenceDetail: z.string().trim().min(2).max(200),
   vacationResidence: z.string().trim().min(2).max(200),
-  departmentIds: z.array(z.string().min(1)).min(1, "select at least one department"),
+  departmentIds: z.array(z.string().min(1)).default([]),
+  // Deliberate opt-out of joining a department (KNUST campus).
+  noDepartment: z.boolean().optional(),
   cellId: z.string().min(1),
+  // Bus pick-up point (KNUST campus). Optional.
+  pickupPointId: z.string().optional().nullable(),
   holyGhostBaptism: z.boolean(),
   holyGhostBaptismDate: optionalIsoDate,
   waterBaptism: z.boolean(),
@@ -57,7 +61,14 @@ export const draftSchema = memberDataSchema.partial();
 export type DraftData = z.infer<typeof draftSchema>;
 
 /** Final submit = full data + Turnstile (+ optional draft token via cookie). */
-export const submitSchema = memberDataSchema.extend({
-  turnstileToken: z.string().min(1, "verification required"),
-});
+export const submitSchema = memberDataSchema
+  .extend({
+    turnstileToken: z.string().min(1, "verification required"),
+  })
+  // A department is required unless the member deliberately opted out.
+  .superRefine((v, ctx) => {
+    if (!v.noDepartment && (!v.departmentIds || v.departmentIds.length === 0)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["departmentIds"], message: "select at least one department, or choose no department" });
+    }
+  });
 export type SubmitData = z.infer<typeof submitSchema>;

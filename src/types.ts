@@ -21,6 +21,9 @@ export interface Env {
   TURNSTILE_SITE_KEY?: string;
   // INTERIM: shared-secret guard for admin endpoints until Phase-1 JWT auth lands.
   ADMIN_API_TOKEN?: string;
+  // Which church this deployment serves ("gctu" | "knust"). Drives branding +
+  // optional feature flags (see src/config/campus.ts). Defaults to gctu.
+  CAMPUS?: string;
 }
 
 // Per-request values set by upstream middleware (e.g. auth).

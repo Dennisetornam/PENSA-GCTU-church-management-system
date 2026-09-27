@@ -41,8 +41,13 @@ describe("Module 3 — schemas", () => {
     void profileImageKey;
     expect(memberDataSchema.safeParse(noPhoto).success).toBe(false);
   });
-  it("requires at least one department", () => {
-    expect(memberDataSchema.safeParse({ ...validMember, departmentIds: [] }).success).toBe(false);
+  it("requires a department on submit unless the member opts out", () => {
+    // base schema is draft-friendly and no longer enforces it
+    expect(memberDataSchema.safeParse({ ...validMember, departmentIds: [] }).success).toBe(true);
+    // submit requires at least one department…
+    expect(submitSchema.safeParse({ ...validMember, departmentIds: [], turnstileToken: "t" }).success).toBe(false);
+    // …unless they deliberately chose "no department"
+    expect(submitSchema.safeParse({ ...validMember, departmentIds: [], noDepartment: true, turnstileToken: "t" }).success).toBe(true);
   });
   it("draft accepts partial data; submit requires turnstile", () => {
     expect(draftSchema.safeParse({ firstName: "Ama" }).success).toBe(true);

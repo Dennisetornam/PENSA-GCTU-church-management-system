@@ -175,6 +175,10 @@ CREATE TABLE members (
     cell_id                   TEXT REFERENCES cells(id) ON DELETE SET NULL,
     -- Officer / ordained role in the church (optional)
     officer_status            TEXT CHECK (officer_status IN ('deacon','deaconess','elder')),
+    -- Bus pick-up point (KNUST campus; managed list). No FK to keep create order simple.
+    pickup_point_id           TEXT,
+    -- Deliberate opt-out of joining a department (KNUST campus).
+    no_department             INTEGER NOT NULL DEFAULT 0 CHECK (no_department IN (0,1)),
     -- Primary gathering preference (collected at registration)
     primary_gathering_type_id TEXT REFERENCES gathering_types(id) ON DELETE SET NULL,
     -- Spiritual information
@@ -456,6 +460,56 @@ CREATE TABLE finance_expenses (
     deleted_at         TEXT
 );
 CREATE INDEX ix_expense_date ON finance_expenses(occurred_on) WHERE deleted_at IS NULL;
+
+-- =============================================================================
+-- SECTION 7b — CAMPUS FEATURES (KNUST: pick-up points, hostels, help desk)
+-- Managed lookups + a public help-desk inbox. GCTU deployments leave the
+-- matching feature flags OFF and never query these tables.
+-- =============================================================================
+
+-- Bus pick-up points (zones) students board from.
+CREATE TABLE pickup_points (
+    id             TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    name           TEXT NOT NULL,
+    departure_time TEXT,                                  -- 'HH:MM' local, e.g. '06:30'
+    location       TEXT,
+    is_active      INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at     TEXT
+);
+
+-- Hostels (managed dropdown for the residence step).
+CREATE TABLE hostels (
+    id         TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    name       TEXT NOT NULL,
+    is_active  INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT
+);
+
+-- Members' Help Desk: enquiries / requests for assistance / concerns. Public
+-- intake (members have no logins); may be anonymous. Admins triage + respond.
+CREATE TABLE help_desk_tickets (
+    id           TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    reference    TEXT,                                    -- short code shown to the sender
+    category     TEXT NOT NULL DEFAULT 'enquiry'
+                     CHECK (category IN ('enquiry','assistance','concern','other')),
+    subject      TEXT,
+    message      TEXT NOT NULL,
+    is_anonymous INTEGER NOT NULL DEFAULT 0 CHECK (is_anonymous IN (0,1)),
+    name         TEXT,                                    -- sender's name (if not anonymous)
+    contact      TEXT,                                    -- phone / whatsapp (optional)
+    member_id    TEXT,                                    -- optional link to a member record
+    status       TEXT NOT NULL DEFAULT 'open'
+                     CHECK (status IN ('open','in_progress','resolved')),
+    admin_notes  TEXT,
+    handled_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    resolved_at  TEXT
+);
+CREATE INDEX ix_helpdesk_status ON help_desk_tickets(status);
+CREATE INDEX ix_helpdesk_created ON help_desk_tickets(created_at);
 
 -- =============================================================================
 -- SECTION 8 — TRIGGERS (updated_at + row_version maintenance)

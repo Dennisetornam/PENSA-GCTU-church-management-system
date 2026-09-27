@@ -10,6 +10,8 @@ import { listMembers, membersForExport, listOfficers, getMember, changeMemberSta
 import { normalizeGhanaPhone } from "../registration/schemas";
 import { thumbKeyOf } from "../media/image";
 import { toXlsxSheets } from "../reports/format";
+import { campusConfig } from "../config/campus";
+import { HELP_STATUSES, listTickets, updateTicket } from "../helpdesk/repository";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -224,6 +226,55 @@ app.delete("/members/:id", authorize("members:update"), async (c) => {
     if (String((e as Error).message || "").includes("not found")) return c.json({ error: "member not found" }, 404);
     throw e;
   }
+  return c.json({ ok: true });
+});
+
+// ── Pick-up points (bus zones) — campus-gated ──────────────────────────────────
+app.get("/pickup-points", authorize("members:read"), async (c) => {
+  if (!campusConfig(c.env).features.pickupPoints) return c.json({ error: "not found" }, 404);
+  const { results } = await c.env.DB.prepare(
+    `SELECT p.id, p.name, p.departure_time, p.location,
+            (SELECT COUNT(*) FROM members m WHERE m.pickup_point_id = p.id AND m.deleted_at IS NULL AND m.registration_status = 'approved') AS rider_count
+     FROM pickup_points p WHERE p.deleted_at IS NULL AND p.is_active = 1 ORDER BY p.name`,
+  ).all();
+  return c.json({ results: results ?? [] });
+});
+
+app.get("/pickup-points/:id/members", authorize("members:read"), async (c) => {
+  if (!campusConfig(c.env).features.pickupPoints) return c.json({ error: "not found" }, 404);
+  const { results } = await c.env.DB.prepare(
+    `SELECT m.id, m.member_code, m.full_name, m.phone_number, m.whatsapp_number, m.level, m.residence_detail,
+            COALESCE(c2.name, 'Unassigned') AS cell_name
+     FROM members m LEFT JOIN cells c2 ON c2.id = m.cell_id
+     WHERE m.pickup_point_id = ? AND m.deleted_at IS NULL AND m.registration_status = 'approved'
+     ORDER BY m.last_name, m.first_name`,
+  ).bind(c.req.param("id")).all();
+  return c.json({ results: results ?? [] });
+});
+
+// ── Members' Help Desk — campus-gated ──────────────────────────────────────────
+app.get("/help-desk", authorize("members:read"), async (c) => {
+  if (!campusConfig(c.env).features.helpDesk) return c.json({ error: "not found" }, 404);
+  return c.json(await listTickets(c.env.DB, {
+    status: c.req.query("status"),
+    page: Number(c.req.query("page") ?? "1"),
+    limit: Number(c.req.query("limit") ?? "50"),
+  }));
+});
+
+const helpDeskPatchSchema = z.object({
+  status: z.enum(HELP_STATUSES).optional(),
+  adminNotes: z.string().max(2000).optional().nullable(),
+});
+app.patch("/help-desk/:id", authorize("members:update"), async (c) => {
+  if (!campusConfig(c.env).features.helpDesk) return c.json({ error: "not found" }, 404);
+  const body = helpDeskPatchSchema.parse(await c.req.json());
+  const ok = await updateTicket(c.env.DB, c.req.param("id"), {
+    status: body.status,
+    adminNotes: body.adminNotes,
+    handledBy: body.status ? c.get("userId") : undefined,
+  });
+  if (!ok) return c.json({ error: "not found" }, 404);
   return c.json({ ok: true });
 });
 

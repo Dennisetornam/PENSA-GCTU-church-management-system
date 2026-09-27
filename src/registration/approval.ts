@@ -61,11 +61,12 @@ export async function approveRegistration(
     .prepare(
       `INSERT INTO members
         (id, first_name, last_name, other_names, date_of_birth, programme_id, level, residence_status,
-         residence_detail, residence_during_vacation, cell_id, officer_status, primary_gathering_type_id, holy_ghost_baptism,
+         residence_detail, residence_during_vacation, cell_id, officer_status, pickup_point_id, no_department,
+         primary_gathering_type_id, holy_ghost_baptism,
          holy_ghost_baptism_date, water_baptism, water_baptism_date, phone_number, whatsapp_number,
          membership_status, registration_status, member_code, profile_picture_key, approved_by,
          approved_at, join_date, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'approved', ?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'approved', ?,?,?,?,?,?,?)`,
     )
     .bind(
       memberId,
@@ -80,6 +81,8 @@ export async function approveRegistration(
       nz(data.vacationResidence),
       nz(data.cellId),
       nz(data.officerStatus),
+      nz(data.pickupPointId),
+      bit(data.noDepartment),
       nz(data.primaryGatheringTypeId),
       bit(data.holyGhostBaptism),
       nz(data.holyGhostBaptismDate),

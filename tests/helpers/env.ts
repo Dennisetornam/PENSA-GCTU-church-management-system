@@ -17,6 +17,7 @@ export interface TestEnv {
   ADMIN_API_TOKEN: string;
   FINANCE_EMAIL?: string;
   FINANCE_PASSWORD_HASH?: string;
+  CAMPUS?: string;
   __r2: Map<string, { body: unknown; httpMetadata?: unknown }>;
 }
 
