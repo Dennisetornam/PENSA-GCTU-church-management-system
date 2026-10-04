@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, UserPlus, CalendarCheck, Boxes, CircleDot,
   FileBarChart, LineChart, Settings, LogOut, Search, Wallet, Cake, Landmark, Menu, X, ShieldCheck, GraduationCap,
-  Bus, LifeBuoy, Sprout,
+  Bus, LifeBuoy, Sprout, FileText, ScrollText,
 } from "lucide-react";
 import { useAuth, roleLabel } from "../auth";
 import { Wordmark } from "../brand";
@@ -25,10 +25,12 @@ const NAV: NavItem[] = [
   { to: "/dashboard/pickup-points", label: "Pick-up points", icon: Bus, feature: "pickupPoints" },
   { to: "/dashboard/birthdays", label: "Birthdays", icon: Cake },
   { to: "/dashboard/help-desk", label: "Help Desk", icon: LifeBuoy, feature: "helpDesk" },
-  { to: "/dashboard/finance", label: "Finance", icon: Wallet, roles: ["super_admin", "church_admin"] },
-  { to: "/dashboard/quota", label: "Quota", icon: Landmark, roles: ["super_admin", "church_admin"] },
+  { to: "/dashboard/finance", label: "Finance", icon: Wallet, roles: ["super_admin", "church_admin", "president"] },
+  { to: "/dashboard/quota", label: "Quota", icon: Landmark, roles: ["super_admin", "church_admin", "president"] },
   { to: "/dashboard/reports", label: "Reports", icon: FileBarChart },
+  { to: "/dashboard/semester-reports", label: "Dept. Reports", icon: FileText, roles: ["super_admin", "church_admin", "president", "department_leader"] },
   { to: "/dashboard/analytics", label: "Analytics", icon: LineChart },
+  { to: "/dashboard/activity", label: "Activity", icon: ScrollText, roles: ["super_admin", "church_admin", "president"] },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

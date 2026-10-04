@@ -14,6 +14,8 @@ import { PickupPoints } from "./pages/PickupPoints";
 import { HelpDesk } from "./pages/HelpDesk";
 import { HelpDeskPublic } from "./pages/HelpDeskPublic";
 import { PDP } from "./pages/PDP";
+import { SemesterReports } from "./pages/SemesterReports";
+import { Activity } from "./pages/Activity";
 import { useCampus } from "./campus";
 import { Attendance } from "./pages/Attendance";
 import { Analytics } from "./pages/Analytics";
@@ -67,6 +69,8 @@ export function App() {
         <Route path="finance" element={<FinanceGate><Finance /></FinanceGate>} />
         <Route path="quota" element={<FinanceGate><Quota /></FinanceGate>} />
         <Route path="reports" element={<Reports />} />
+        <Route path="semester-reports" element={<SemesterReports />} />
+        <Route path="activity" element={<Activity />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
       </Route>

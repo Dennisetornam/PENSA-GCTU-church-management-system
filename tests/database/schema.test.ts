@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { makeTestEnv } from "../helpers/env";
 
 describe("Module 1 — Database schema", () => {
-  it("loads the full schema and seeds (4 roles, 39 programmes)", () => {
+  it("loads the full schema and seeds (5 roles, 39 programmes)", () => {
     const env = makeTestEnv({ seed: true });
     const roles = env.DB.__raw.prepare("SELECT count(*) c FROM roles").get() as { c: number };
     const progs = env.DB.__raw.prepare("SELECT count(*) c FROM programmes").get() as { c: number };
-    expect(roles.c).toBe(4);
+    expect(roles.c).toBe(5);
     expect(progs.c).toBe(39);
   });
 

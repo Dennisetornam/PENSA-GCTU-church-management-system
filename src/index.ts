@@ -11,6 +11,7 @@ import { analyticsRoutes } from "./analytics/routes";
 import { reportRoutes } from "./reports/routes";
 import { financeRoutes } from "./finance/routes";
 import { helpDeskRoutes } from "./helpdesk/routes";
+import { deptReportRoutes } from "./semester-reports/routes";
 import { campusConfig } from "./config/campus";
 
 // The Durable Object class must be exported from the Worker entry module.
@@ -49,5 +50,8 @@ app.route("/api/reports", reportRoutes);
 
 // Finance — record giving per service (offerings, tithes, pledges, etc.)
 app.route("/api/finance", financeRoutes);
+
+// Departmental semester reports (periods + per-department submissions)
+app.route("/api/dept-reports", deptReportRoutes);
 
 export default app;

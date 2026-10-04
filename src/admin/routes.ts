@@ -285,4 +285,25 @@ app.post("/members/:id/status", authorize("members:update"), async (c) => {
   return c.json({ ok: true });
 });
 
+// ── Activity log (oversight) — president / admins ──────────────────────────────
+app.get("/audit", authorize("audit:view"), async (c) => {
+  const page = Math.max(1, Number(c.req.query("page") ?? "1"));
+  const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? "50")));
+  const where: string[] = [];
+  const args: unknown[] = [];
+  const action = c.req.query("action");
+  if (action) { where.push("a.action LIKE ?"); args.push(`%${action}%`); }
+  const from = c.req.query("from");
+  if (from) { where.push("a.created_at >= ?"); args.push(from); }
+  const to = c.req.query("to");
+  if (to) { where.push("a.created_at <= ?"); args.push(to); }
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const { results } = await c.env.DB.prepare(
+    `SELECT a.id, a.action, a.entity_type, a.entity_id, a.summary, a.created_at, u.full_name AS actor_name
+     FROM audit_log a LEFT JOIN users u ON u.id = a.actor_user_id
+     ${whereSql} ORDER BY a.created_at DESC LIMIT ? OFFSET ?`,
+  ).bind(...args, limit, (page - 1) * limit).all();
+  return c.json({ results: results ?? [], page, limit });
+});
+
 export const adminRoutes = app;

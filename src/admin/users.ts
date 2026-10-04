@@ -13,10 +13,11 @@ import { loginIdentifier } from "../auth/identifier";
 const ROLE_ID: Record<string, string> = {
   super_admin: "role_super_admin",
   church_admin: "role_church_admin",
+  president: "role_president",
   department_leader: "role_dept_leader",
   cell_leader: "role_cell_leader",
 };
-const roleSchema = z.enum(["super_admin", "church_admin", "department_leader", "cell_leader"]);
+const roleSchema = z.enum(["super_admin", "church_admin", "president", "department_leader", "cell_leader"]);
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 

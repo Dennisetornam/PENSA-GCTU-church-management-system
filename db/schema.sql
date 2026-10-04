@@ -512,6 +512,39 @@ CREATE INDEX ix_helpdesk_status ON help_desk_tickets(status);
 CREATE INDEX ix_helpdesk_created ON help_desk_tickets(created_at);
 
 -- =============================================================================
+-- SECTION 7c — DEPARTMENTAL SEMESTER REPORTS
+-- Each period (semester), every department head submits a report file. The
+-- president gathers them to draft the church's final report. A department with
+-- no row for the period simply hasn't submitted yet.
+-- =============================================================================
+
+CREATE TABLE report_periods (
+    id            TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    name          TEXT NOT NULL,                        -- e.g. '2025/2026 · Semester 1'
+    academic_year TEXT,                                 -- e.g. '2025/2026'
+    term          TEXT,                                 -- e.g. 'Semester 1'
+    due_date      TEXT,                                 -- ISO date
+    status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')),
+    created_by    TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    closed_at     TEXT
+);
+CREATE INDEX ix_report_periods_status ON report_periods(status);
+
+CREATE TABLE department_reports (
+    id            TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    period_id     TEXT NOT NULL REFERENCES report_periods(id) ON DELETE CASCADE,
+    department_id TEXT NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+    file_key      TEXT,                                 -- R2 object key of the uploaded report
+    file_name     TEXT,                                 -- original filename (for download)
+    summary       TEXT,                                 -- optional short summary
+    submitted_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+    submitted_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (period_id, department_id)
+);
+
+-- =============================================================================
 -- SECTION 8 — TRIGGERS (updated_at + row_version maintenance)
 -- recursive_triggers is OFF by default in SQLite/D1, and the WHEN guard
 -- prevents re-entrancy, so these cannot loop.

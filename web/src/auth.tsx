@@ -20,6 +20,7 @@ export const useAuth = () => useContext(Ctx);
 const ROLE_LABEL: Record<string, string> = {
   super_admin: "Super Admin",
   church_admin: "Church Administrator",
+  president: "President",
   department_leader: "Department Leader",
   cell_leader: "Cell Leader",
 };
