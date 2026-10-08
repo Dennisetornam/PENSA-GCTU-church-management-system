@@ -71,7 +71,7 @@ function ChangePassword() {
 }
 
 interface U { id: string; full_name: string; email: string; role: string; status: string; }
-const ROLES = [["church_admin", "Church Administrator"], ["president", "President"], ["department_leader", "Department Leader"], ["cell_leader", "Cell Leader"], ["super_admin", "Super Admin"]] as const;
+const ROLES = [["church_admin", "Church Administrator"], ["president", "President"], ["department_head", "Department Head"], ["department_leader", "Department Leader"], ["cell_leader", "Cell Leader"], ["super_admin", "Super Admin"]] as const;
 
 function Team() {
   const { me } = useAuth();

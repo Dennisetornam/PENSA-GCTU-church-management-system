@@ -102,8 +102,8 @@ const submitSchema = z.object({
 app.post("/submit", authorize("reports:submit"), async (c) => {
   const b = submitSchema.parse(await c.req.json());
   const { role, departments } = await scopedDepartments(c);
-  // Department leaders may only submit for a department they lead.
-  if (role === "department_leader" && !departments.includes(b.departmentId))
+  // Scoped roles (department leader/head) may only submit for a department they lead.
+  if ((role === "department_leader" || role === "department_head") && !departments.includes(b.departmentId))
     return c.json({ error: "forbidden" }, 403);
   const period = await getPeriod(c.env.DB, b.periodId) as { status?: string } | null;
   if (!period) return c.json({ error: "period not found" }, 404);
@@ -121,9 +121,9 @@ app.get("/mine", authorize("reports:submit"), async (c) => {
 app.get("/:id/file", authorize("reports:view"), async (c) => {
   const report = await getReport(c.env.DB, c.req.param("id"));
   if (!report || !report.file_key) return c.json({ error: "not found" }, 404);
-  // Department leaders may only download their own department's report.
+  // Scoped roles may only download their own department's report.
   const { role, departments } = await scopedDepartments(c);
-  if (role === "department_leader" && !departments.includes(report.department_id))
+  if ((role === "department_leader" || role === "department_head") && !departments.includes(report.department_id))
     return c.json({ error: "forbidden" }, 403);
   const obj = await c.env.MEDIA!.get(report.file_key);
   if (!obj) return c.json({ error: "not found" }, 404);

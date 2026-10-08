@@ -16,6 +16,7 @@ import { HelpDeskPublic } from "./pages/HelpDeskPublic";
 import { PDP } from "./pages/PDP";
 import { SemesterReports } from "./pages/SemesterReports";
 import { Activity } from "./pages/Activity";
+import { HeadPortal } from "./pages/HeadPortal";
 import { useCampus } from "./campus";
 import { Attendance } from "./pages/Attendance";
 import { Analytics } from "./pages/Analytics";
@@ -38,6 +39,8 @@ function Splash() {
 export function App() {
   const { me, loading } = useAuth();
   const { features } = useCampus();
+  const isHead = me?.role === "department_head";
+  const home = isHead ? "/head" : "/dashboard"; // where a signed-in user lands
 
   return (
     <Routes>
@@ -46,10 +49,14 @@ export function App() {
       <Route path="/help" element={<HelpDeskPublic />} />
 
       {/* Auth-gated below */}
-      <Route path="/login" element={loading ? <Splash /> : me ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/login" element={loading ? <Splash /> : me ? <Navigate to={home} replace /> : <Login />} />
+
+      {/* Department heads get a dedicated, scoped portal (not the admin console) */}
+      <Route path="/head/*" element={loading ? <Splash /> : !me ? <Navigate to="/login" replace /> : isHead ? <HeadPortal /> : <Navigate to="/dashboard" replace />} />
+
       <Route
         path="/dashboard"
-        element={loading ? <Splash /> : me ? <Layout /> : <Navigate to="/login" replace />}
+        element={loading ? <Splash /> : !me ? <Navigate to="/login" replace /> : isHead ? <Navigate to="/head" replace /> : <Layout />}
       >
         <Route index element={<Overview />} />
         <Route path="registrations" element={<Registrations />} />
@@ -74,7 +81,7 @@ export function App() {
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
       </Route>
-      <Route path="*" element={<Navigate to={me ? "/dashboard" : "/login"} replace />} />
+      <Route path="*" element={<Navigate to={me ? home : "/login"} replace />} />
     </Routes>
   );
 }

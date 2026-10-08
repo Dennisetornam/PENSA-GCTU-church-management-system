@@ -219,7 +219,7 @@ function OnBehalfModal({ periodId, row, onClose, onDone }: { periodId: string; r
 
 /* ───────────────────────── Department head ───────────────────────── */
 interface MyDept { department_id: string; department_name: string; report_id: string | null; file_name: string | null; summary: string | null; submitted_at: string | null; }
-function SubmitView() {
+export function SubmitView() {
   const { data, isLoading } = useQuery({ queryKey: ["my-reports"], queryFn: () => api.get<{ period: Period | null; departments: MyDept[] }>("/api/dept-reports/mine") });
   if (isLoading) return <div className="grid h-24 place-items-center text-ink-soft/50"><Spinner /></div>;
   const period = data?.period;

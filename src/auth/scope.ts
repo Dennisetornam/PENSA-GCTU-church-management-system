@@ -42,7 +42,7 @@ export async function getUserById(db: D1Database, id: string): Promise<UserWithR
 
 export async function resolveScope(db: D1Database, user: UserWithRole): Promise<AccessScope> {
   const scope: AccessScope = { memberId: user.member_id ?? undefined, departments: [], cells: [] };
-  if (user.role_name === "department_leader" && user.member_id) {
+  if ((user.role_name === "department_leader" || user.role_name === "department_head") && user.member_id) {
     const { results } = await db
       .prepare("SELECT id FROM departments WHERE leader_member_id = ? AND deleted_at IS NULL")
       .bind(user.member_id)

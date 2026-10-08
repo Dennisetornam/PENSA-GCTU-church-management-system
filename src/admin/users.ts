@@ -15,9 +15,10 @@ const ROLE_ID: Record<string, string> = {
   church_admin: "role_church_admin",
   president: "role_president",
   department_leader: "role_dept_leader",
+  department_head: "role_dept_head",
   cell_leader: "role_cell_leader",
 };
-const roleSchema = z.enum(["super_admin", "church_admin", "president", "department_leader", "cell_leader"]);
+const roleSchema = z.enum(["super_admin", "church_admin", "president", "department_leader", "department_head", "cell_leader"]);
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 

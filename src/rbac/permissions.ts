@@ -1,6 +1,6 @@
 // Typed role → permission map for the 4 authenticating roles (members do not log in).
 export type Scope = "all" | "department" | "cell";
-export type Role = "super_admin" | "church_admin" | "president" | "department_leader" | "cell_leader";
+export type Role = "super_admin" | "church_admin" | "president" | "department_leader" | "department_head" | "cell_leader";
 export type Permission =
   | "members:create" | "members:read" | "members:update" | "members:delete"
   | "attendance:record" | "attendance:read"
@@ -40,6 +40,13 @@ const M: Record<Role, Partial<Record<Permission, Scope>>> = {
     "attendance:record": "department", "attendance:read": "department",
     "events:manage": "department", "events:read": "all",
     "analytics:view": "department", "reports:view": "department", "reports:submit": "department",
+  },
+  // Department head: a KNUST portfolio head. Scoped to their department(s):
+  // submit the semester report, see their roster, view (not take) attendance.
+  department_head: {
+    "members:read": "department",
+    "attendance:read": "department",
+    "reports:view": "department", "reports:submit": "department",
   },
   cell_leader: {
     "members:read": "cell", "attendance:record": "cell", "attendance:read": "cell",
