@@ -74,6 +74,29 @@ describe("Departmental reports + oversight", () => {
     expect((await call("/api/dept-reports/periods", head, { name: "X" })).status).toBe(403);
   });
 
+  it("edits and deletes a reporting period (delete cascades its reports)", async () => {
+    const period = await (await call("/api/dept-reports/periods", sa, { name: "Original" })).json() as { id: string };
+    // head submits so we can confirm the cascade on delete
+    await call("/api/dept-reports/submit", head, { periodId: period.id, departmentId: "dept_media", summary: "x" });
+
+    // edit (PATCH needs a body → our helper would send GET without one; use fetch directly)
+    const patch = await app.fetch(new Request(`https://x/api/dept-reports/periods/${period.id}`, { method: "PATCH", headers: { authorization: `Bearer ${sa}`, "content-type": "application/json" }, body: JSON.stringify({ name: "Renamed", term: "Semester 2" }) }), env as never);
+    expect(patch.status).toBe(200);
+    const list = await (await call("/api/dept-reports/periods", sa)).json() as { results: { id: string; name: string }[] };
+    expect(list.results.find((p) => p.id === period.id)?.name).toBe("Renamed");
+
+    // delete (DELETE has no body)
+    const del = await app.fetch(new Request(`https://x/api/dept-reports/periods/${period.id}`, { method: "DELETE", headers: { authorization: `Bearer ${sa}` } }), env as never);
+    expect(del.status).toBe(200);
+    expect((await call(`/api/dept-reports/periods/${period.id}/board`, sa)).status).toBe(404);
+    const rep = env.DB.__raw.prepare("SELECT count(*) c FROM department_reports WHERE period_id = ?").get(period.id) as { c: number };
+    expect(rep.c).toBe(0); // cascade removed the submission
+
+    // a department leader cannot edit or delete
+    const forbid = await app.fetch(new Request(`https://x/api/dept-reports/periods/zzz`, { method: "DELETE", headers: { authorization: `Bearer ${head}` } }), env as never);
+    expect(forbid.status).toBe(403);
+  });
+
   it("activity log is visible to president/admin, not to a cell leader", async () => {
     expect((await call("/api/audit", sa)).status).toBe(200);
     expect((await call("/api/audit", pres)).status).toBe(200);

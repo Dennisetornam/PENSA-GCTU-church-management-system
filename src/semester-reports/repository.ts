@@ -32,6 +32,20 @@ export async function listPeriods(db: D1Database) {
   return { results: results ?? [] };
 }
 
+export async function updatePeriod(db: D1Database, id: string, p: Omit<NewPeriod, "createdBy">): Promise<boolean> {
+  const res = await db
+    .prepare("UPDATE report_periods SET name = ?, academic_year = ?, term = ?, due_date = ? WHERE id = ?")
+    .bind(p.name, p.academicYear ?? null, p.term ?? null, p.dueDate ?? null, id)
+    .run();
+  return !!res.meta.changes;
+}
+
+/** Delete a period and all its department submissions (ON DELETE CASCADE). */
+export async function deletePeriod(db: D1Database, id: string): Promise<boolean> {
+  const res = await db.prepare("DELETE FROM report_periods WHERE id = ?").bind(id).run();
+  return !!res.meta.changes;
+}
+
 export async function closePeriod(db: D1Database, id: string): Promise<boolean> {
   const res = await db
     .prepare("UPDATE report_periods SET status = 'closed', closed_at = datetime('now') WHERE id = ? AND status = 'open'")

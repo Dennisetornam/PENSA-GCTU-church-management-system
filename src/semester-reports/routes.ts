@@ -6,7 +6,7 @@ import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { getAuth } from "../auth/context";
 import {
-  createPeriod, listPeriods, closePeriod, reopenPeriod, getPeriod, getPeriodBoard,
+  createPeriod, listPeriods, updatePeriod, deletePeriod, closePeriod, reopenPeriod, getPeriod, getPeriodBoard,
   submitReport, getReport, getMySubmissions,
 } from "./repository";
 
@@ -40,6 +40,17 @@ app.post("/periods", authorize("reports:manage"), async (c) => {
 });
 
 app.get("/periods", authorize("reports:view"), async (c) => c.json(await listPeriods(c.env.DB)));
+
+app.patch("/periods/:id", authorize("reports:manage"), async (c) => {
+  const b = periodSchema.parse(await c.req.json());
+  const ok = await updatePeriod(c.env.DB, c.req.param("id"), b);
+  return ok ? c.json({ ok: true }) : c.json({ error: "not found" }, 404);
+});
+
+app.delete("/periods/:id", authorize("reports:manage"), async (c) => {
+  const ok = await deletePeriod(c.env.DB, c.req.param("id"));
+  return ok ? c.json({ ok: true }) : c.json({ error: "not found" }, 404);
+});
 
 app.post("/periods/:id/close", authorize("reports:manage"), async (c) => {
   const ok = await closePeriod(c.env.DB, c.req.param("id"));
