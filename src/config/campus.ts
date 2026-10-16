@@ -46,7 +46,7 @@ const CONFIGS: Record<CampusId, CampusConfig> = {
     id: "gctu",
     name: "PENSA GCTU",
     shortName: "GCTU",
-    features: { ...ALL_OFF, cells: true },
+    features: { ...ALL_OFF, cells: true, helpDesk: true },
   },
   knust: {
     id: "knust",

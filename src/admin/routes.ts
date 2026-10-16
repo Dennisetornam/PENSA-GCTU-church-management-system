@@ -6,7 +6,7 @@ import { z, ZodError } from "zod";
 import type { Env, Variables } from "../types";
 import { authorize } from "../auth/context";
 import { approveRegistration, rejectRegistration, NotFoundError, ConflictError } from "../registration/approval";
-import { listMembers, membersForExport, listOfficers, getMember, changeMemberStatus, updateMember, softDeleteMember } from "../members/repository";
+import { listMembers, membersForExport, listOfficers, getMember, changeMemberStatus, updateMember, softDeleteMember, promoteLevel } from "../members/repository";
 import { normalizeGhanaPhone } from "../registration/schemas";
 import { thumbKeyOf } from "../media/image";
 import { toXlsxSheets } from "../reports/format";
@@ -182,6 +182,19 @@ app.get("/members/:id/photo", authorize("members:read"), async (c) => {
 });
 
 // Update / edit a member (super_admin / church_admin / scoped leader)
+// End-of-semester bulk promotion (admins only). Registered before /members/:id.
+const promoteSchema = z.object({ level: z.enum(["100", "200", "300", "400"]) });
+app.post("/members/promote", authorize("members:update"), async (c) => {
+  if (!["super_admin", "church_admin"].includes(c.get("role") ?? "")) return c.json({ error: "forbidden" }, 403);
+  const { level } = promoteSchema.parse(await c.req.json());
+  const res = await promoteLevel(c.env.DB, level);
+  await c.env.DB.prepare(
+    `INSERT INTO audit_log (id, actor_user_id, action, entity_type, summary, created_at)
+     VALUES (lower(hex(randomblob(16))), ?, 'members.promoted', 'member', ?, datetime('now'))`,
+  ).bind(c.get("userId"), `level ${level} -> ${res.action} (${res.promoted} members)`).run();
+  return c.json(res);
+});
+
 const memberUpdateSchema = z.object({
   firstName: z.string().trim().min(1).max(60),
   lastName: z.string().trim().min(1).max(60),

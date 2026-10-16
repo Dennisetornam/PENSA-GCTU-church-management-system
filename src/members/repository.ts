@@ -183,6 +183,32 @@ export async function updateMember(db: D1Database, id: string, u: MemberUpdate, 
   }
 }
 
+const NEXT_LEVEL: Record<string, string> = { "100": "200", "200": "300", "300": "400" };
+
+/**
+ * End-of-semester promotion: advance every approved, non-alumni member at a
+ * level to the next (100→200, 200→300, 300→400). Level 400 "graduates" to
+ * alumni (membership_status = 'alumni'). Atomic single UPDATE per call.
+ */
+export async function promoteLevel(db: D1Database, fromLevel: string): Promise<{ promoted: number; action: string }> {
+  const base = "deleted_at IS NULL AND registration_status = 'approved' AND membership_status != 'alumni'";
+  const now = new Date().toISOString();
+  if (fromLevel === "400") {
+    const res = await db
+      .prepare(`UPDATE members SET membership_status = 'alumni', updated_at = ? WHERE level = '400' AND ${base}`)
+      .bind(now)
+      .run();
+    return { promoted: res.meta.changes ?? 0, action: "alumni" };
+  }
+  const next = NEXT_LEVEL[fromLevel];
+  if (!next) throw new Error("invalid level");
+  const res = await db
+    .prepare(`UPDATE members SET level = ?, updated_at = ? WHERE level = ? AND ${base}`)
+    .bind(next, now, fromLevel)
+    .run();
+  return { promoted: res.meta.changes ?? 0, action: next };
+}
+
 /**
  * Soft-delete a member: sets deleted_at so they drop out of every list,
  * directory, roster, export and analytics query (all filter `deleted_at IS

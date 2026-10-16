@@ -68,14 +68,16 @@ describe("KNUST campus features", () => {
 describe("GCTU campus (features off)", () => {
   beforeEach(() => { env.CAMPUS = "gctu"; });
 
-  it("hides hostels/pick-up points from options and 404s the campus endpoints", async () => {
+  it("hides hostels/pick-up points but keeps Help Desk on for GCTU", async () => {
     const o = await (await pub("/register/options")).json() as { campus: { id: string; features: Record<string, boolean> }; hostels: unknown[]; pickupPoints: unknown[] };
     expect(o.campus.id).toBe("gctu");
     expect(o.campus.features.cells).toBe(true); // GCTU runs cells
+    expect(o.campus.features.pickupPoints).toBe(false);
+    expect(o.campus.features.helpDesk).toBe(true); // Help Desk now enabled for GCTU
     expect(o.hostels.length).toBe(0);
     expect(o.pickupPoints.length).toBe(0);
-    expect((await req("/api/pickup-points")).status).toBe(404);
-    expect((await req("/api/help-desk")).status).toBe(404);
-    expect((await pub("/help-desk/submit", { method: "POST", body: JSON.stringify({ message: "hello there" }) })).status).toBe(404);
+    expect((await req("/api/pickup-points")).status).toBe(404); // pick-up points stay off
+    expect((await req("/api/help-desk")).status).toBe(200);     // help desk works
+    expect((await pub("/help-desk/submit", { method: "POST", body: JSON.stringify({ message: "hello there" }) })).status).toBe(201);
   });
 });

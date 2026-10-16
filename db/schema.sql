@@ -121,6 +121,11 @@ CREATE TABLE departments (
     id               TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
     name             TEXT NOT NULL,                     -- Media | Music & Drama | Prayer | Organizing | Bible Studies
     leader_member_id TEXT REFERENCES members(id) ON DELETE SET NULL,
+    -- Department head (portfolio head) who logs in — a user, not necessarily a member.
+    head_user_id     TEXT REFERENCES users(id) ON DELETE SET NULL,
+    head_name        TEXT,                              -- head's display name (for reports board + reminders)
+    head_phone       TEXT,                              -- head's contact (reminder SMS)
+    head_whatsapp    TEXT,
     description      TEXT,
     is_active        INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
     created_at       TEXT NOT NULL DEFAULT (datetime('now')),

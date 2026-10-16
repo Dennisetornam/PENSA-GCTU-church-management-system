@@ -42,7 +42,14 @@ export async function getUserById(db: D1Database, id: string): Promise<UserWithR
 
 export async function resolveScope(db: D1Database, user: UserWithRole): Promise<AccessScope> {
   const scope: AccessScope = { memberId: user.member_id ?? undefined, departments: [], cells: [] };
-  if ((user.role_name === "department_leader" || user.role_name === "department_head") && user.member_id) {
+  // Department heads are scoped by a direct user link (they needn't be members).
+  if (user.role_name === "department_head") {
+    const { results } = await db
+      .prepare("SELECT id FROM departments WHERE head_user_id = ? AND deleted_at IS NULL")
+      .bind(user.id)
+      .all<{ id: string }>();
+    scope.departments = (results ?? []).map((r) => r.id);
+  } else if (user.role_name === "department_leader" && user.member_id) {
     const { results } = await db
       .prepare("SELECT id FROM departments WHERE leader_member_id = ? AND deleted_at IS NULL")
       .bind(user.member_id)

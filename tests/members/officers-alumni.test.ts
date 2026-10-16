@@ -61,6 +61,29 @@ describe("Officers & Alumni", () => {
     expect(officers.results.map((x) => x.id).sort()).toEqual(["m1", "m2", "m3"]);
   });
 
+  it("promotes a level to the next (and graduates level 400 to alumni)", async () => {
+    await env.DB.prepare("UPDATE members SET level='100' WHERE id IN ('m1','m2')").run();
+    await env.DB.prepare("UPDATE members SET level='400' WHERE id='m3'").run();
+
+    const r = await (await req("/api/members/promote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level: "100" }) })).json() as { promoted: number; action: string };
+    expect(r.promoted).toBe(2);
+    expect(r.action).toBe("200");
+    const lvl = await env.DB.prepare("SELECT level FROM members WHERE id='m1'").first<{ level: string }>();
+    expect(lvl?.level).toBe("200");
+
+    // level 400 graduates to alumni
+    const grad = await (await req("/api/members/promote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level: "400" }) })).json() as { promoted: number; action: string };
+    expect(grad.action).toBe("alumni");
+    const m3 = await env.DB.prepare("SELECT membership_status FROM members WHERE id='m3'").first<{ membership_status: string }>();
+    expect(m3?.membership_status).toBe("alumni");
+  });
+
+  it("promotion is admin-only (a department leader with members:update is still forbidden)", async () => {
+    const t = await signAccessToken({ sub: "x", role: "department_leader", scope: { departments: ["dept_media"], cells: [] } }, env.JWT_SECRET);
+    const res = await app.fetch(new Request("https://x/api/members/promote", { method: "POST", headers: { authorization: `Bearer ${t}`, "content-type": "application/json" }, body: JSON.stringify({ level: "100" }) }), env as never);
+    expect(res.status).toBe(403);
+  });
+
   it("soft-deletes a member so they leave the directory and 404", async () => {
     const res = await req("/api/members/m3", { method: "DELETE" });
     expect(res.status).toBe(200);

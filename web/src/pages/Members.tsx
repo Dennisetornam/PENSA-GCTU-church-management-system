@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Search, ChevronRight, Download } from "lucide-react";
+import { Search, ChevronRight, Download, ArrowUpCircle } from "lucide-react";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import { Avatar, Badge, Spinner, Empty } from "../ui";
 import { BulkMessageBar } from "./BulkMessage";
+
+const NEXT_LEVEL: Record<string, string> = { "100": "200", "200": "300", "300": "400" };
 
 interface Row { id: string; member_code: string | null; full_name: string; phone_number: string; cell_id: string | null; membership_status: string; }
 
@@ -23,11 +26,27 @@ const GENDERS: [string, string][] = [["", "All"], ["male", "Male"], ["female", "
 const LEVELS: [string, string][] = [["", "All levels"], ["100", "100"], ["200", "200"], ["300", "300"], ["400", "400"]];
 
 export function Members() {
+  const qc = useQueryClient();
+  const { me } = useAuth();
+  const isAdmin = ["super_admin", "church_admin"].includes(me?.role ?? "");
   const [q, setQ] = useState("");
   const [gender, setGender] = useState("");
   const [level, setLevel] = useState("");
   const [downloading, setDownloading] = useState(false);
   const dq = useDebounced(q);
+
+  const promote = useMutation({
+    mutationFn: (lvl: string) => api.post<{ promoted: number; action: string }>("/api/members/promote", { level: lvl }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["members"] });
+      window.alert(r.promoted === 0 ? "No members to promote at this level." : `Promoted ${r.promoted} member${r.promoted === 1 ? "" : "s"}${r.action === "alumni" ? " to Alumni" : ` to Level ${r.action}`}.`);
+    },
+    onError: (e: Error) => window.alert(`Promotion failed: ${e.message}`),
+  });
+  const doPromote = () => {
+    const to = level === "400" ? "Alumni (graduated)" : `Level ${NEXT_LEVEL[level]}`;
+    if (window.confirm(`Promote everyone currently in Level ${level} to ${to}? This affects all approved members at this level and can't be undone in bulk. Tip: promote higher levels first (300, then 200, then 100).`)) promote.mutate(level);
+  };
 
   const filterQS = `${gender ? `&gender=${gender}` : ""}${level ? `&level=${level}` : ""}`;
   const filtered = !!(gender || level);
@@ -70,8 +89,13 @@ export function Members() {
           <button key={v} onClick={() => setLevel(v)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${level === v ? "border-gold bg-gold/12 text-[#8a6a25]" : "border-ink/15 text-ink-soft/70 hover:border-ink/30"}`}>{l}</button>
         ))}
         {filtered && (
-          <button onClick={exportByCell} disabled={downloading} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-sage/40 px-3.5 py-1.5 text-sm font-medium text-[#4d5645] transition hover:bg-sage/10">
+          <button onClick={exportByCell} disabled={downloading} className={`inline-flex items-center gap-1.5 rounded-full border border-sage/40 px-3.5 py-1.5 text-sm font-medium text-[#4d5645] transition hover:bg-sage/10 ${isAdmin && level ? "" : "ml-auto"}`}>
             {downloading ? <Spinner /> : <><Download size={15} /> Excel · {filterLabel} by cell</>}
+          </button>
+        )}
+        {isAdmin && level && (
+          <button onClick={doPromote} disabled={promote.isPending} title="End-of-semester promotion" className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-gold/50 bg-gold/10 px-3.5 py-1.5 text-sm font-medium text-[#8a6a25] transition hover:bg-gold/20 disabled:opacity-50">
+            {promote.isPending ? <Spinner /> : <><ArrowUpCircle size={15} /> {level === "400" ? "Graduate to Alumni" : `Promote to ${NEXT_LEVEL[level]}`}</>}
           </button>
         )}
       </div>

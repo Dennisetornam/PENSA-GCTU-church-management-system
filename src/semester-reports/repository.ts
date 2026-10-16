@@ -73,7 +73,9 @@ export async function getPeriodBoard(db: D1Database, periodId: string) {
       `SELECT d.id AS department_id, d.name AS department_name,
               dr.id AS report_id, dr.file_name, dr.summary, dr.submitted_at,
               u.full_name AS submitted_by_name,
-              m.full_name AS head_name, m.phone_number AS head_phone, m.whatsapp_number AS head_whatsapp
+              COALESCE(d.head_name, m.full_name) AS head_name,
+              COALESCE(d.head_phone, m.phone_number) AS head_phone,
+              COALESCE(d.head_whatsapp, m.whatsapp_number) AS head_whatsapp
        FROM departments d
        LEFT JOIN department_reports dr ON dr.department_id = d.id AND dr.period_id = ?
        LEFT JOIN users u ON u.id = dr.submitted_by
