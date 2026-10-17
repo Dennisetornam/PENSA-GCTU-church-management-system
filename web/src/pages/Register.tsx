@@ -103,7 +103,7 @@ export function Register() {
   const valid: Record<number, boolean> = {
     0: !!(f.firstName && f.lastName && f.dateOfBirth && f.profileImageKey),
     1: !!(f.programmeId && f.level && f.residenceStatus && f.residenceDetail && f.vacationResidence),
-    2: !!((f.departmentIds.length || f.noDepartment) && (o?.campus?.features.cells ? f.cellId : true) && f.membershipStatus),
+    2: !!((f.departmentIds.length || f.noDepartment) && f.membershipStatus),
     3: true,
     4: phoneDigits(f.phoneNumber).length === 10,
     5: !!token,
@@ -269,8 +269,9 @@ function StepChurch({ f, set, o }: { f: Form; set: (p: Partial<Form>) => void; o
         )}
       </div>
       {o.campus?.features.cells && (
-        <div><Label>Cell *</Label>
-          <Choice options={o.cells.map((c) => [c.id, c.name] as [string, string])} value={f.cellId} onChange={(v) => set({ cellId: v })} />
+        <div><Label>Cell</Label>
+          <Choice options={[...o.cells.map((c) => [c.id, c.name] as [string, string]), ["", "No cell yet"]]} value={f.cellId} onChange={(v) => set({ cellId: v })} />
+          <p className="mt-1 text-xs text-ink-soft/55">Pick your cell, or choose “No cell yet” if you haven’t joined one.</p>
         </div>
       )}
       <div><Label>I identify as a *</Label>

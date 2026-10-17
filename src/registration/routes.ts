@@ -134,9 +134,8 @@ app.post("/submit", rateLimit(LIMIT_RULES.register, deps), async (c) => {
   const ua = c.req.header("user-agent") ?? null;
   const data = submitSchema.parse(await c.req.json());
 
-  // Cell is required only where the campus runs cells.
-  if (campusConfig(c.env).features.cells && !data.cellId)
-    return c.json({ error: "validation_failed", issues: [{ path: ["cellId"], message: "select a cell" }] }, 400);
+  // Cell and department are both optional now — a member may register without
+  // a cell ("No cell yet") or without a department ("I'd prefer not to join").
 
   if (!(await verifyTurnstile(data.turnstileToken, c.env.TURNSTILE_SECRET, ip)))
     return c.json({ error: "verification failed" }, 400);
