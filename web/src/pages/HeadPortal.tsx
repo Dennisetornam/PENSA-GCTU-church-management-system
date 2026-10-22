@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, FileText, Users, LogOut, Menu, X, CalendarCheck, Clock, Check, Wallet } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { LayoutDashboard, FileText, Users, LogOut, Menu, X, CalendarCheck, Clock, Check, Wallet, LifeBuoy } from "lucide-react";
 import { useAuth, roleLabel } from "../auth";
 import { Wordmark } from "../brand";
 import { api } from "../api";
@@ -11,6 +11,7 @@ import { SubmitView } from "./SemesterReports";
 import { Attendance } from "./Attendance";
 import { Finance } from "./Finance";
 import { FinanceGate } from "../financeGate";
+import { TicketCard, HELP_STATUS, type Ticket } from "./HelpDesk";
 
 type NavItem = { to: string; label: string; icon: typeof Users; end?: boolean };
 function navFor(role: string): NavItem[] {
@@ -18,6 +19,7 @@ function navFor(role: string): NavItem[] {
     { to: "/head", label: "Overview", icon: LayoutDashboard, end: true },
     { to: "/head/report", label: "Submit report", icon: FileText },
     { to: "/head/members", label: "My members", icon: Users },
+    { to: "/head/help-desk", label: "Help Desk", icon: LifeBuoy },
   ];
   if (role === "department_head_attendance") base.push({ to: "/head/attendance", label: "Attendance", icon: CalendarCheck });
   if (role === "finance_head") base.push({ to: "/head/finance", label: "Finance", icon: Wallet });
@@ -81,6 +83,7 @@ export function HeadPortal() {
             <Route index element={<Overview />} />
             <Route path="report" element={<ReportPage />} />
             <Route path="members" element={<MyMembers />} />
+            <Route path="help-desk" element={<HeadHelpDesk />} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="finance" element={<FinanceGate><Finance /></FinanceGate>} />
             <Route path="*" element={<Navigate to="/head" replace />} />
@@ -149,6 +152,34 @@ function ReportPage() {
         <p className="mt-2 text-ink-soft/70">Upload your department's report for the open semester.</p>
       </header>
       <SubmitView />
+    </div>
+  );
+}
+
+function HeadHelpDesk() {
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState("open");
+  const { data, isLoading } = useQuery({ queryKey: ["head-help-desk", filter], queryFn: () => api.get<{ results: Ticket[]; byStatus: Record<string, number> }>(`/api/head/help-desk?status=${filter}`) });
+  const tickets = data?.results ?? [];
+  const counts = data?.byStatus ?? { open: 0, in_progress: 0, resolved: 0 };
+  const refresh = () => qc.invalidateQueries({ queryKey: ["head-help-desk"] });
+  return (
+    <div className="mx-auto max-w-4xl">
+      <header className="mb-6">
+        <div className="eyebrow mb-1.5">Routed to you</div>
+        <h1 className="flex items-center gap-2 font-display text-4xl font-semibold text-ink"><LifeBuoy size={28} className="text-gold" /> Help Desk</h1>
+        <p className="mt-2 text-ink-soft/70">Concerns members routed to your area. Respond and mark them as you handle them.</p>
+      </header>
+      <div className="mb-5 flex flex-wrap gap-2">
+        {HELP_STATUS.map((s) => (
+          <button key={s.key} onClick={() => setFilter(s.key)} className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${filter === s.key ? "border-gold bg-gold/12 text-[#8a6a25]" : "border-ink/15 text-ink-soft/70 hover:border-ink/30"}`}>
+            {s.label}<span className="rounded-full bg-ink/[0.06] px-1.5 text-xs font-semibold text-ink-soft/70">{counts[s.key] ?? 0}</span>
+          </button>
+        ))}
+      </div>
+      {isLoading ? <div className="grid h-24 place-items-center text-ink-soft/50"><Spinner /></div>
+        : tickets.length === 0 ? <Empty title="Nothing here" sub={filter === "open" ? "No open messages routed to your area." : "No messages in this state."} />
+        : <div className="space-y-3">{tickets.map((t) => <TicketCard key={t.id} t={t} base="/api/head/help-desk" onChanged={refresh} />)}</div>}
     </div>
   );
 }

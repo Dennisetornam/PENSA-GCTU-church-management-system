@@ -12,6 +12,7 @@ export interface NewTicket {
   name?: string | null;
   contact?: string | null;
   memberId?: string | null;
+  departmentId?: string | null;
 }
 
 const nz = (s: unknown) => (s && String(s).length > 0 ? String(s) : null);
@@ -28,39 +29,61 @@ export async function createTicket(db: D1Database, t: NewTicket): Promise<{ id: 
   const anon = t.isAnonymous ? 1 : 0;
   await db
     .prepare(
-      `INSERT INTO help_desk_tickets (id, reference, category, subject, message, is_anonymous, name, contact, member_id, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?, datetime('now'), datetime('now'))`,
+      `INSERT INTO help_desk_tickets (id, reference, category, subject, message, is_anonymous, name, contact, member_id, department_id, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?, datetime('now'), datetime('now'))`,
     )
-    .bind(id, reference, t.category, nz(t.subject), t.message, anon, anon ? null : nz(t.name), anon ? null : nz(t.contact), nz(t.memberId))
+    .bind(id, reference, t.category, nz(t.subject), t.message, anon, anon ? null : nz(t.name), anon ? null : nz(t.contact), nz(t.memberId), nz(t.departmentId))
     .run();
   return { id, reference };
 }
 
-export async function listTickets(db: D1Database, p: { status?: string; page?: number; limit?: number } = {}) {
+export async function listTickets(db: D1Database, p: { status?: string; departmentIds?: string[]; page?: number; limit?: number } = {}) {
   const limit = Math.min(200, Math.max(1, p.limit ?? 50));
   const page = Math.max(1, p.page ?? 1);
   const where: string[] = [];
   const args: unknown[] = [];
   if (p.status) { where.push("t.status = ?"); args.push(p.status); }
+  // Scope to specific departments (for a department head's inbox).
+  const scoped = p.departmentIds;
+  if (scoped) {
+    if (scoped.length === 0) return { results: [], byStatus: { open: 0, in_progress: 0, resolved: 0 }, page, limit };
+    where.push(`t.department_id IN (${scoped.map(() => "?").join(",")})`);
+    args.push(...scoped);
+  }
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
   const { results } = await db
     .prepare(
       `SELECT t.id, t.reference, t.category, t.subject, t.message, t.is_anonymous, t.name, t.contact, t.member_id,
-              t.status, t.admin_notes, t.created_at, t.updated_at, t.resolved_at, u.full_name AS handled_by_name
+              t.status, t.admin_notes, t.created_at, t.updated_at, t.resolved_at, u.full_name AS handled_by_name,
+              t.department_id, d.name AS department_name
        FROM help_desk_tickets t
        LEFT JOIN users u ON u.id = t.handled_by
+       LEFT JOIN departments d ON d.id = t.department_id
        ${whereSql}
        ORDER BY CASE t.status WHEN 'open' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.created_at DESC
        LIMIT ? OFFSET ?`,
     )
     .bind(...args, limit, (page - 1) * limit)
     .all();
+  // Status counts (respecting the department scope, if any).
+  const countWhere = scoped ? `WHERE department_id IN (${scoped.map(() => "?").join(",")})` : "";
   const counts = await db
-    .prepare("SELECT status, COUNT(*) AS n FROM help_desk_tickets GROUP BY status")
+    .prepare(`SELECT status, COUNT(*) AS n FROM help_desk_tickets ${countWhere} GROUP BY status`)
+    .bind(...(scoped ?? []))
     .all<{ status: string; n: number }>();
   const byStatus: Record<string, number> = { open: 0, in_progress: 0, resolved: 0 };
   for (const r of counts.results ?? []) byStatus[r.status] = Number(r.n);
   return { results: results ?? [], byStatus, page, limit };
+}
+
+/** Is a ticket routed to one of these departments? (authorises a head's update.) */
+export async function ticketInDepartments(db: D1Database, id: string, deptIds: string[]): Promise<boolean> {
+  if (deptIds.length === 0) return false;
+  const row = await db
+    .prepare(`SELECT 1 AS ok FROM help_desk_tickets WHERE id = ? AND department_id IN (${deptIds.map(() => "?").join(",")})`)
+    .bind(id, ...deptIds)
+    .first<{ ok: number }>();
+  return !!row;
 }
 
 export async function updateTicket(

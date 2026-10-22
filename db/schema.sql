@@ -507,6 +507,7 @@ CREATE TABLE help_desk_tickets (
     name         TEXT,                                    -- sender's name (if not anonymous)
     contact      TEXT,                                    -- phone / whatsapp (optional)
     member_id    TEXT,                                    -- optional link to a member record
+    department_id TEXT REFERENCES departments(id) ON DELETE SET NULL, -- routed to this dept's head
     status       TEXT NOT NULL DEFAULT 'open'
                      CHECK (status IN ('open','in_progress','resolved')),
     admin_notes  TEXT,

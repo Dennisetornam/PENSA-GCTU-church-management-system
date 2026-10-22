@@ -30,6 +30,7 @@ const submitSchema = z.object({
   isAnonymous: z.boolean().default(false),
   name: z.string().trim().max(120).optional(),
   contact: z.string().trim().max(60).optional(),
+  departmentId: z.string().max(60).optional(), // the area this is about (routes to that head)
 });
 
 app.post("/submit", rateLimit(LIMIT_RULES.register, deps), async (c) => {
@@ -41,6 +42,7 @@ app.post("/submit", rateLimit(LIMIT_RULES.register, deps), async (c) => {
     isAnonymous: b.isAnonymous,
     name: b.name ?? null,
     contact: b.contact ?? null,
+    departmentId: b.departmentId ?? null,
   });
   return c.json({ ok: true, reference }, 201);
 });

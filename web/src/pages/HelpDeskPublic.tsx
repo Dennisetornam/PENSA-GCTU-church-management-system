@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { LifeBuoy, Check, ShieldCheck } from "lucide-react";
 import { api } from "../api";
@@ -15,7 +16,10 @@ const CATEGORIES: { key: string; label: string }[] = [
 
 export function HelpDeskPublic() {
   const campus = useCampus();
+  const { data: opts } = useQuery({ queryKey: ["options"], queryFn: () => api.get<{ departments: { id: string; name: string }[] }>("/register/options") });
+  const departments = opts?.departments ?? [];
   const [category, setCategory] = useState("enquiry");
+  const [departmentId, setDepartmentId] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [anon, setAnon] = useState(false);
@@ -31,6 +35,7 @@ export function HelpDeskPublic() {
       const r = await api.post<{ reference: string }>("/help-desk/submit", {
         category, subject: subject.trim() || undefined, message: message.trim(),
         isAnonymous: anon, name: anon ? undefined : name.trim() || undefined, contact: anon ? undefined : contact.trim() || undefined,
+        departmentId: departmentId || undefined,
       });
       setDone(r.reference);
     } catch {
@@ -75,6 +80,15 @@ export function HelpDeskPublic() {
               ))}
             </div>
           </div>
+          {departments.length > 0 && (
+            <div><label className="label">Which area is this about?</label>
+              <select className="field" value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+                <option value="">Not sure / general</option>
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+              <p className="mt-1 text-xs text-ink-soft/55">Picking an area sends it straight to that leader so it's handled faster.</p>
+            </div>
+          )}
           <div><label className="label">Subject (optional)</label><input className="field" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="A short title" /></div>
           <div><label className="label">Your message *</label><textarea className="field min-h-32" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Tell us what's going on…" /></div>
 

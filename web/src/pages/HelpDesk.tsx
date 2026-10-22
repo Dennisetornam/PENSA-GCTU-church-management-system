@@ -4,16 +4,18 @@ import { LifeBuoy, Phone, MessageCircle, User, EyeOff, Check } from "lucide-reac
 import { api } from "../api";
 import { Spinner, Badge, Empty } from "../ui";
 
-interface Ticket {
+export interface Ticket {
   id: string; reference: string | null; category: string; subject: string | null; message: string;
   is_anonymous: number; name: string | null; contact: string | null; status: string;
   admin_notes: string | null; created_at: string; handled_by_name: string | null;
+  department_name?: string | null;
 }
 interface Inbox { results: Ticket[]; byStatus: Record<string, number> }
 
-const STATUS: { key: string; label: string }[] = [
+export const HELP_STATUS: { key: string; label: string }[] = [
   { key: "open", label: "Open" }, { key: "in_progress", label: "In progress" }, { key: "resolved", label: "Resolved" },
 ];
+const STATUS = HELP_STATUS;
 const STATUS_TONE: Record<string, "gold" | "clay" | "sage"> = { open: "clay", in_progress: "gold", resolved: "sage" };
 const CAT_LABEL: Record<string, string> = { enquiry: "Enquiry", assistance: "Assistance", concern: "Concern", other: "Other" };
 
@@ -52,12 +54,12 @@ export function HelpDesk() {
   );
 }
 
-function TicketCard({ t, onChanged }: { t: Ticket; onChanged: () => void }) {
+export function TicketCard({ t, onChanged, base = "/api/help-desk" }: { t: Ticket; onChanged: () => void; base?: string }) {
   const [notes, setNotes] = useState(t.admin_notes ?? "");
   const [dirty, setDirty] = useState(false);
   const [reply, setReply] = useState("");
   const mutate = useMutation({
-    mutationFn: (body: { status?: string; adminNotes?: string }) => api.patch(`/api/help-desk/${t.id}`, body),
+    mutationFn: (body: { status?: string; adminNotes?: string }) => api.patch(`${base}/${t.id}`, body),
     onSuccess: onChanged,
   });
   const wa = t.contact ? t.contact.replace(/[^\d]/g, "") : "";
@@ -67,6 +69,7 @@ function TicketCard({ t, onChanged }: { t: Ticket; onChanged: () => void }) {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Badge tone="ink">{CAT_LABEL[t.category] ?? t.category}</Badge>
         <Badge tone={STATUS_TONE[t.status] ?? "ink"}>{t.status.replace("_", " ")}</Badge>
+        {t.department_name && <Badge tone="gold">{t.department_name}</Badge>}
         {t.reference && <span className="rounded-full bg-ink/[0.05] px-2 py-0.5 text-xs font-semibold text-ink-soft/60">{t.reference}</span>}
         <span className="ml-auto text-xs text-ink-soft/50">{new Date(t.created_at).toLocaleString()}</span>
       </div>

@@ -60,6 +60,18 @@ describe("Department Head portal", () => {
     expect((await post("/api/dept-reports/periods", head, { name: "X" })).status).toBe(403);
   });
 
+  it("a head sees Help Desk tickets routed to their department and can resolve them", async () => {
+    await env.DB.prepare("INSERT INTO help_desk_tickets (id, category, message, department_id, created_at, updated_at) VALUES ('tk1','concern','pray for me','dept_media', datetime('now'), datetime('now'))").run();
+    await env.DB.prepare("INSERT INTO help_desk_tickets (id, category, message, department_id, created_at, updated_at) VALUES ('tk2','concern','other dept','dept_prayer', datetime('now'), datetime('now'))").run();
+    const inbox = await (await get("/api/head/help-desk?status=open", head)).json() as { results: { id: string }[] };
+    expect(inbox.results.map((x) => x.id)).toEqual(["tk1"]); // only their department's ticket
+    // can resolve their own ticket, not another department's
+    const ok = await app.fetch(new Request("https://x/api/head/help-desk/tk1", { method: "PATCH", headers: { authorization: `Bearer ${head}`, "content-type": "application/json" }, body: JSON.stringify({ status: "resolved" }) }), env as never);
+    expect(ok.status).toBe(200);
+    const no = await app.fetch(new Request("https://x/api/head/help-desk/tk2", { method: "PATCH", headers: { authorization: `Bearer ${head}`, "content-type": "application/json" }, body: JSON.stringify({ status: "resolved" }) }), env as never);
+    expect(no.status).toBe(404);
+  });
+
   it("a gender-scoped wing head sees all members of that gender", async () => {
     // make Media a 'male' wing for this test; the head is scoped to it
     await env.DB.prepare("UPDATE departments SET gender_scope='male' WHERE id='dept_media'").run();
