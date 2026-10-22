@@ -22,6 +22,8 @@ export interface CampusFeatures {
   hostelPicker: boolean;
   /** This campus runs cells (small groups). When off, cells are hidden and not required. */
   cells: boolean;
+  /** Registration asks the member for their gender. */
+  collectGender: boolean;
 }
 
 export interface CampusConfig {
@@ -39,6 +41,7 @@ const ALL_OFF = {
   helpDesk: false,
   noDepartmentOption: false,
   hostelPicker: false,
+  collectGender: false,
 } as const;
 
 const CONFIGS: Record<CampusId, CampusConfig> = {
@@ -59,6 +62,7 @@ const CONFIGS: Record<CampusId, CampusConfig> = {
       noDepartmentOption: true,
       hostelPicker: true,
       cells: false,
+      collectGender: true,
     },
   },
 };

@@ -11,6 +11,8 @@ INSERT INTO roles (id, name, description, is_system) VALUES
   ('role_church_admin', 'church_admin',      'Church Administrator: full domain + approvals + lookups', 1),
   ('role_president',    'president',         'Oversight: read-only across the system + activity log + reports', 1),
   ('role_dept_head',    'department_head',   'Portfolio head: own department roster, report submission, attendance view', 1),
+  ('role_dept_head_att','department_head_attendance', 'Department head who also records attendance', 1),
+  ('role_finance_head', 'finance_head',      'Department head with full finance access (behind the finance gate)', 1),
   ('role_dept_leader',  'department_leader', 'Manages own department roster & attendance', 1),
   ('role_cell_leader',  'cell_leader',       'Manages own cell roster & attendance', 1)
 ON CONFLICT(id) DO NOTHING;

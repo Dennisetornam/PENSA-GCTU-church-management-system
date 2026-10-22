@@ -126,6 +126,8 @@ CREATE TABLE departments (
     head_name        TEXT,                              -- head's display name (for reports board + reminders)
     head_phone       TEXT,                              -- head's contact (reminder SMS)
     head_whatsapp    TEXT,
+    registerable     INTEGER NOT NULL DEFAULT 1 CHECK (registerable IN (0,1)), -- shown on the registration form?
+    gender_scope     TEXT CHECK (gender_scope IN ('male','female')),           -- wings: head's roster = all of this gender
     description      TEXT,
     is_active        INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
     created_at       TEXT NOT NULL DEFAULT (datetime('now')),

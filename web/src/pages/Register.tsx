@@ -10,7 +10,7 @@ import { resizeImage } from "../imageResize";
 // Cloudflare Turnstile TEST site key (always passes). Swap for the real key at launch.
 const TURNSTILE_SITEKEY = "1x00000000000000000000AA";
 
-interface CampusFeatures { pickupPoints: boolean; pdp: boolean; helpDesk: boolean; noDepartmentOption: boolean; hostelPicker: boolean; cells: boolean; }
+interface CampusFeatures { pickupPoints: boolean; pdp: boolean; helpDesk: boolean; noDepartmentOption: boolean; hostelPicker: boolean; cells: boolean; collectGender: boolean; }
 interface Options {
   programmes: { id: string; name: string }[];
   departments: { id: string; name: string }[];
@@ -23,7 +23,7 @@ interface Options {
 }
 
 interface Form {
-  firstName: string; lastName: string; otherNames: string; dateOfBirth: string; profileImageKey: string;
+  firstName: string; lastName: string; otherNames: string; dateOfBirth: string; gender: string; profileImageKey: string;
   programmeId: string; level: string; residenceStatus: string; residenceDetail: string; vacationResidence: string;
   departmentIds: string[]; noDepartment: boolean; cellId: string; pickupPointId: string; membershipStatus: string; officerStatus: string;
   holyGhostBaptism: boolean; holyGhostBaptismDate: string; waterBaptism: boolean; waterBaptismDate: string;
@@ -31,7 +31,7 @@ interface Form {
 }
 
 const EMPTY: Form = {
-  firstName: "", lastName: "", otherNames: "", dateOfBirth: "", profileImageKey: "",
+  firstName: "", lastName: "", otherNames: "", dateOfBirth: "", gender: "", profileImageKey: "",
   programmeId: "", level: "", residenceStatus: "", residenceDetail: "", vacationResidence: "",
   departmentIds: [], noDepartment: false, cellId: "", pickupPointId: "", membershipStatus: "visitor", officerStatus: "",
   holyGhostBaptism: false, holyGhostBaptismDate: "", waterBaptism: false, waterBaptismDate: "",
@@ -101,7 +101,7 @@ export function Register() {
   }
 
   const valid: Record<number, boolean> = {
-    0: !!(f.firstName && f.lastName && f.dateOfBirth && f.profileImageKey),
+    0: !!(f.firstName && f.lastName && f.dateOfBirth && f.profileImageKey && (o?.campus?.features.collectGender ? f.gender : true)),
     1: !!(f.programmeId && f.level && f.residenceStatus && f.residenceDetail && f.vacationResidence),
     2: !!((f.departmentIds.length || f.noDepartment) && f.membershipStatus),
     3: true,
@@ -144,7 +144,7 @@ export function Register() {
             <motion.div key={step} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: 0.25 }}>
               {!o ? <div className="grid h-40 place-items-center"><Spinner /></div> : (
                 <>
-                  {step === 0 && <StepPersonal f={f} set={set} preview={preview} uploading={uploading} onPhoto={uploadPhoto} />}
+                  {step === 0 && <StepPersonal f={f} set={set} preview={preview} uploading={uploading} onPhoto={uploadPhoto} collectGender={!!o.campus?.features.collectGender} />}
                   {step === 1 && <StepAcademic f={f} set={set} o={o} />}
                   {step === 2 && <StepChurch f={f} set={set} o={o} />}
                   {step === 3 && <StepSpiritual f={f} set={set} />}
@@ -179,7 +179,7 @@ const stepTitle = (s: number) => ["Tell us about you", "Studies & home", "Your p
 /* ---- Steps ---- */
 function Label({ children }: { children: React.ReactNode }) { return <label className="label">{children}</label>; }
 
-function StepPersonal({ f, set, preview, uploading, onPhoto }: { f: Form; set: (p: Partial<Form>) => void; preview: string | null; uploading: boolean; onPhoto: (file: File) => void }) {
+function StepPersonal({ f, set, preview, uploading, onPhoto, collectGender }: { f: Form; set: (p: Partial<Form>) => void; preview: string | null; uploading: boolean; onPhoto: (file: File) => void; collectGender: boolean }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-center">
@@ -197,6 +197,11 @@ function StepPersonal({ f, set, preview, uploading, onPhoto }: { f: Form; set: (
       </div>
       <div><Label>Other names</Label><input className="field" value={f.otherNames} onChange={(e) => set({ otherNames: e.target.value })} /></div>
       <div><Label>Date of birth *</Label><input type="date" className="field" value={f.dateOfBirth} onChange={(e) => set({ dateOfBirth: e.target.value })} /></div>
+      {collectGender && (
+        <div><Label>Gender *</Label>
+          <Choice options={[["male", "Male"], ["female", "Female"]]} value={f.gender} onChange={(v) => set({ gender: v })} />
+        </div>
+      )}
     </div>
   );
 }

@@ -36,6 +36,14 @@ describe("KNUST campus features", () => {
     expect(o.campus.features.cells).toBe(false); // KNUST does not run cells
     expect(o.hostels.length).toBe(2);
     expect(o.pickupPoints.length).toBe(2);
+    expect(o.campus.features.collectGender).toBe(true);
+  });
+
+  it("excludes non-registerable departments (wings) from the registration form", async () => {
+    await env.DB.prepare("UPDATE departments SET registerable=0 WHERE id='dept_media'").run();
+    const o = await (await pub("/register/options")).json() as { departments: { id: string }[] };
+    expect(o.departments.map((d) => d.id)).not.toContain("dept_media");
+    expect(o.departments.length).toBeGreaterThan(0); // other departments still show
   });
 
   it("lists pick-up points with rider counts and the riders of a zone", async () => {

@@ -28,6 +28,7 @@ export function MemberProfile() {
   const { id = "" } = useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const campus = useCampus();
   const { data: m, isLoading } = useQuery({ queryKey: ["member", id], queryFn: () => api.get<Member>(`/api/members/${id}`) });
   const { data: o } = useQuery({ queryKey: ["options"], queryFn: () => api.get<Options>("/register/options") });
   const [editing, setEditing] = useState(false);
@@ -114,7 +115,7 @@ export function MemberProfile() {
             <Field icon={<GraduationCap size={15} />} label="Level">{m.level ?? "—"}</Field>
             <Field icon={<Home size={15} />} label="Residence">{m.residence_status ? `${m.residence_status === "hostel_resident" ? "Hostel" : "Non-resident"}${m.residence_detail ? " · " + m.residence_detail : ""}` : "—"}</Field>
             <Field icon={<Home size={15} />} label="Vacation residence">{m.residence_during_vacation ?? "—"}</Field>
-            <Field icon={<Users2 size={15} />} label="Cell">{o?.cells.find((c) => c.id === m.cell_id)?.name ?? "—"}</Field>
+            {campus.features.cells && <Field icon={<Users2 size={15} />} label="Cell">{o?.cells.find((c) => c.id === m.cell_id)?.name ?? "—"}</Field>}
             <Field icon={<Users2 size={15} />} label="Departments">{m.departments.map((d) => d.name).join(", ") || "—"}</Field>
             <Field icon={<Users2 size={15} />} label="Officer status">{m.officer_status ? OFFICER_LABEL[m.officer_status] ?? m.officer_status : "—"}</Field>
             <Field icon={<Phone size={15} />} label="Phone"><a href={`sms:${m.phone_number}`} className="text-ink hover:text-gold hover:underline">{m.phone_number}</a></Field>

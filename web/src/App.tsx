@@ -39,7 +39,7 @@ function Splash() {
 export function App() {
   const { me, loading } = useAuth();
   const { features } = useCampus();
-  const isHead = me?.role === "department_head";
+  const isHead = ["department_head", "department_head_attendance", "finance_head"].includes(me?.role ?? "");
   const home = isHead ? "/head" : "/dashboard"; // where a signed-in user lands
 
   return (

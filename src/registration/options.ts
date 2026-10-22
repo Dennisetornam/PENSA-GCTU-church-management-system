@@ -30,12 +30,14 @@ async function activeList(db: D1Database, table: string): Promise<Option[]> {
 }
 
 export async function getRegistrationOptions(db: D1Database, campus: CampusConfig): Promise<RegistrationOptions> {
-  const [programmes, departments, cells, gatheringTypes] = await Promise.all([
+  const [programmes, departmentsRes, cells, gatheringTypes] = await Promise.all([
     activeList(db, "programmes"),
-    activeList(db, "departments"),
+    // Departments a member can join at registration (wings are registerable = 0).
+    db.prepare("SELECT id, name FROM departments WHERE is_active = 1 AND deleted_at IS NULL AND registerable = 1 ORDER BY name").all<Option>(),
     activeList(db, "cells"),
     activeList(db, "gathering_types"),
   ]);
+  const departments = departmentsRes.results ?? [];
 
   // Campus-only tables — only query them where the feature is switched on, so
   // the shared code stays safe on databases that don't have these tables.

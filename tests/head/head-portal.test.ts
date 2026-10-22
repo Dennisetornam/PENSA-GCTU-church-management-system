@@ -59,4 +59,14 @@ describe("Department Head portal", () => {
   it("a head cannot manage periods (reports:manage) or take attendance", async () => {
     expect((await post("/api/dept-reports/periods", head, { name: "X" })).status).toBe(403);
   });
+
+  it("a gender-scoped wing head sees all members of that gender", async () => {
+    // make Media a 'male' wing for this test; the head is scoped to it
+    await env.DB.prepare("UPDATE departments SET gender_scope='male' WHERE id='dept_media'").run();
+    await env.DB.prepare("UPDATE members SET gender='male' WHERE id='m1'").run();   // not in any dept
+    await env.DB.prepare("UPDATE members SET gender='female' WHERE id='m2'").run();
+    await env.DB.prepare("INSERT INTO members (id, first_name, last_name, phone_number, gender, registration_status) VALUES ('m3','Yaw','B','+233200000003','male','approved')").run();
+    const r = await (await get("/api/head/members", head)).json() as { results: { id: string }[] };
+    expect(r.results.map((x) => x.id).sort()).toEqual(["m1", "m3"]); // all males, regardless of member_departments
+  });
 });

@@ -1,19 +1,28 @@
 import { useState } from "react";
 import { NavLink, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, FileText, Users, LogOut, Menu, X, CalendarCheck, Clock, Check } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut, Menu, X, CalendarCheck, Clock, Check, Wallet } from "lucide-react";
 import { useAuth, roleLabel } from "../auth";
 import { Wordmark } from "../brand";
 import { api } from "../api";
 import { Spinner, Badge, Empty, Avatar } from "../ui";
 import { BulkMessageBar } from "./BulkMessage";
 import { SubmitView } from "./SemesterReports";
+import { Attendance } from "./Attendance";
+import { Finance } from "./Finance";
+import { FinanceGate } from "../financeGate";
 
-const NAV = [
-  { to: "/head", label: "Overview", icon: LayoutDashboard, end: true },
-  { to: "/head/report", label: "Submit report", icon: FileText },
-  { to: "/head/members", label: "My members", icon: Users },
-];
+type NavItem = { to: string; label: string; icon: typeof Users; end?: boolean };
+function navFor(role: string): NavItem[] {
+  const base: NavItem[] = [
+    { to: "/head", label: "Overview", icon: LayoutDashboard, end: true },
+    { to: "/head/report", label: "Submit report", icon: FileText },
+    { to: "/head/members", label: "My members", icon: Users },
+  ];
+  if (role === "department_head_attendance") base.push({ to: "/head/attendance", label: "Attendance", icon: CalendarCheck });
+  if (role === "finance_head") base.push({ to: "/head/finance", label: "Finance", icon: Wallet });
+  return base;
+}
 
 function Panel({ onNavigate, onSignOut }: { onNavigate?: () => void; onSignOut: () => void }) {
   const { me } = useAuth();
@@ -21,7 +30,7 @@ function Panel({ onNavigate, onSignOut }: { onNavigate?: () => void; onSignOut: 
     <>
       <div className="px-6 py-7"><Wordmark subtle /></div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3">
-        {NAV.map(({ to, label, icon: Icon, end }) => (
+        {navFor(me?.role ?? "").map(({ to, label, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} onClick={onNavigate}
             className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-all ${isActive ? "bg-gold/15 text-gold-soft shadow-[inset_0_0_0_1px_rgba(195,154,74,.3)]" : "text-ivory-soft/65 hover:bg-white/[0.05] hover:text-ivory-soft"}`}>
             <Icon size={18} strokeWidth={1.75} /><span className="font-medium">{label}</span>
@@ -72,6 +81,8 @@ export function HeadPortal() {
             <Route index element={<Overview />} />
             <Route path="report" element={<ReportPage />} />
             <Route path="members" element={<MyMembers />} />
+            <Route path="attendance" element={<Attendance />} />
+            <Route path="finance" element={<FinanceGate><Finance /></FinanceGate>} />
             <Route path="*" element={<Navigate to="/head" replace />} />
           </Routes>
         </main>

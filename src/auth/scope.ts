@@ -42,8 +42,9 @@ export async function getUserById(db: D1Database, id: string): Promise<UserWithR
 
 export async function resolveScope(db: D1Database, user: UserWithRole): Promise<AccessScope> {
   const scope: AccessScope = { memberId: user.member_id ?? undefined, departments: [], cells: [] };
-  // Department heads are scoped by a direct user link (they needn't be members).
-  if (user.role_name === "department_head") {
+  // Department heads (any variant) are scoped by a direct user link (needn't be members).
+  const HEAD_ROLES = ["department_head", "department_head_attendance", "finance_head"];
+  if (HEAD_ROLES.includes(user.role_name)) {
     const { results } = await db
       .prepare("SELECT id FROM departments WHERE head_user_id = ? AND deleted_at IS NULL")
       .bind(user.id)

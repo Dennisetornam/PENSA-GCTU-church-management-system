@@ -1,6 +1,6 @@
 // Typed role → permission map for the 4 authenticating roles (members do not log in).
 export type Scope = "all" | "department" | "cell";
-export type Role = "super_admin" | "church_admin" | "president" | "department_leader" | "department_head" | "cell_leader";
+export type Role = "super_admin" | "church_admin" | "president" | "department_leader" | "department_head" | "department_head_attendance" | "finance_head" | "cell_leader";
 export type Permission =
   | "members:create" | "members:read" | "members:update" | "members:delete"
   | "attendance:record" | "attendance:read"
@@ -47,6 +47,19 @@ const M: Record<Role, Partial<Record<Permission, Scope>>> = {
     "members:read": "department",
     "attendance:read": "department",
     "reports:view": "department", "reports:submit": "department",
+  },
+  // A department head who also records attendance (e.g. Secretariat/Editorial, Protocol).
+  department_head_attendance: {
+    "members:read": "department",
+    "attendance:read": "all", "attendance:record": "all",
+    "reports:view": "department", "reports:submit": "department",
+  },
+  // The Finance head: a department head with full finance (still behind the finance gate).
+  finance_head: {
+    "members:read": "department",
+    "attendance:read": "department",
+    "reports:view": "department", "reports:submit": "department",
+    "finance:view": "all", "finance:manage": "all",
   },
   cell_leader: {
     "members:read": "cell", "attendance:record": "cell", "attendance:read": "cell",
