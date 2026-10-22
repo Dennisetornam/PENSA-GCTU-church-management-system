@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
 import { Crown, Wallet, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
@@ -203,19 +203,28 @@ export function Analytics() {
           </div>
         </div>
 
-        {/* Department participation */}
+        {/* Department participation — horizontal bars so names stay legible however many departments there are */}
         <div className="card p-6">
           <h3 className="mb-4 font-display text-xl text-ink">Department participation</h3>
-          <div className="h-56">
-            <ResponsiveContainer>
-              <BarChart data={depts.data?.results ?? []} margin={{ left: -20, right: 8, top: 6 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(33,27,51,.08)" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#473F5C" }} interval={0} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#6E7A63" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {(() => {
+            const rows = depts.data?.results ?? [];
+            const chartHeight = Math.max(200, rows.length * 34 + 16);
+            return (
+              <div className="max-h-[460px] overflow-y-auto pr-1">
+                <div style={{ height: chartHeight }}>
+                  <ResponsiveContainer>
+                    <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 20, top: 4, bottom: 4 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(33,27,51,.08)" horizontal={false} />
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "#473F5C" }} />
+                      <YAxis type="category" dataKey="name" width={150} interval={0} tick={{ fontSize: 11, fill: "#473F5C" }} />
+                      <Tooltip cursor={{ fill: "rgba(110,122,99,.08)" }} />
+                      <Bar dataKey="count" fill="#6E7A63" radius={[0, 6, 6, 0]} maxBarSize={22} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Baptism — clickable to see who's pending */}
