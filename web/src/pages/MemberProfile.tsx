@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Pencil, Check, X, Phone, MessageCircle, GraduationCap, Home, Flame, Droplets, Users2, CalendarCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Check, X, Phone, MessageCircle, GraduationCap, Home, Flame, Droplets, Users2, CalendarCheck, Trash2, Camera } from "lucide-react";
+import { resizeImage } from "../imageResize";
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { api } from "../api";
 import { Spinner, Badge, Avatar } from "../ui";
@@ -31,6 +32,22 @@ export function MemberProfile() {
   const { data: o } = useQuery({ queryKey: ["options"], queryFn: () => api.get<Options>("/register/options") });
   const [editing, setEditing] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const [photoVer, setPhotoVer] = useState(0);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const changePhoto = async (file: File) => {
+    setPhotoBusy(true);
+    try {
+      const [full, thumb] = await Promise.all([resizeImage(file, 1600, 0.85), resizeImage(file, 256, 0.8)]);
+      const fd = new FormData();
+      fd.append("file", full, "photo.jpg");
+      fd.append("thumb", thumb, "thumb.jpg");
+      await api.uploadForm(`/api/members/${id}/photo`, fd);
+      setPhotoVer((v) => v + 1);
+      qc.invalidateQueries({ queryKey: ["member", id] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+    } catch { window.alert("That image couldn't be uploaded. Try a JPG or PNG under 5MB."); }
+    finally { setPhotoBusy(false); }
+  };
   const moveToAlumni = useMutation({
     mutationFn: () => api.post(`/api/members/${id}/status`, { status: "alumni", reason: "completed — moved to alumni" }),
     onSuccess: () => {
@@ -43,8 +60,8 @@ export function MemberProfile() {
   if (isLoading) return <div className="grid h-60 place-items-center text-ink-soft/50"><Spinner /></div>;
   if (!m) return <div className="mx-auto max-w-2xl"><Link to="/dashboard/members" className="text-ink-soft/60">← Members</Link><p className="mt-6 font-display text-2xl text-ink">Member not found.</p></div>;
 
-  const photoThumb = m.profile_picture_key ? `/api/members/${m.id}/photo?variant=thumb` : null;
-  const photoFull = m.profile_picture_key ? `/api/members/${m.id}/photo` : null;
+  const photoThumb = m.profile_picture_key ? `/api/members/${m.id}/photo?variant=thumb&v=${photoVer}` : null;
+  const photoFull = m.profile_picture_key ? `/api/members/${m.id}/photo?v=${photoVer}` : null;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -60,6 +77,10 @@ export function MemberProfile() {
                 <img src={photoThumb} alt={m.full_name} loading="eager" decoding="async" className="h-20 w-20 cursor-zoom-in rounded-2xl object-cover ring-2 ring-gold/40 transition hover:ring-gold" />
               </button>
             ) : <div className="h-20 w-20 rounded-2xl ring-2 ring-gold/40"><Avatar name={m.full_name} /></div>}
+            <label title="Change photo" className="absolute -bottom-1.5 -right-1.5 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-gold text-vespers-deep shadow ring-2 ring-vespers transition hover:bg-gold-soft">
+              {photoBusy ? <Spinner /> : <Camera size={14} />}
+              <input type="file" accept="image/*" className="hidden" disabled={photoBusy} onChange={(e) => e.target.files?.[0] && changePhoto(e.target.files[0])} />
+            </label>
           </div>
           <div className="relative flex-1">
             <h1 className="font-display text-3xl font-semibold text-ivory-soft">{m.full_name}</h1>

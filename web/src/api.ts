@@ -91,6 +91,7 @@ export const api = {
     fd.append("file", file);
     return uploadRequest<T>(path, fd);
   },
+  uploadForm: <T>(path: string, form: FormData) => uploadRequest<T>(path, form),
   // Download a file blob and save it with the given filename.
   async download(path: string, filename: string) {
     const blob = await downloadRequest(path);

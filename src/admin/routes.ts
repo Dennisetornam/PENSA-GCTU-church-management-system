@@ -8,7 +8,7 @@ import { authorize } from "../auth/context";
 import { approveRegistration, rejectRegistration, NotFoundError, ConflictError } from "../registration/approval";
 import { listMembers, membersForExport, listOfficers, getMember, changeMemberStatus, updateMember, softDeleteMember, promoteLevel } from "../members/repository";
 import { normalizeGhanaPhone } from "../registration/schemas";
-import { thumbKeyOf } from "../media/image";
+import { thumbKeyOf, detectImage, MAX_IMAGE_BYTES } from "../media/image";
 import { toXlsxSheets } from "../reports/format";
 import { campusConfig } from "../config/campus";
 import { HELP_STATUSES, listTickets, updateTicket } from "../helpdesk/repository";
@@ -179,6 +179,31 @@ app.get("/members/:id/photo", authorize("members:read"), async (c) => {
   return new Response(obj.body, {
     headers: { "content-type": obj.httpMetadata?.contentType ?? "image/jpeg", "cache-control": "private, max-age=86400" },
   });
+});
+
+// Replace a member's profile photo (full + optional thumbnail), multipart.
+app.post("/members/:id/photo", authorize("members:update"), async (c) => {
+  const id = c.req.param("id");
+  const exists = await c.env.DB.prepare("SELECT id FROM members WHERE id = ? AND deleted_at IS NULL").bind(id).first();
+  if (!exists) return c.json({ error: "member not found" }, 404);
+  const form = await c.req.formData();
+  const raw = form.get("file");
+  if (raw === null || typeof raw === "string") return c.json({ error: "no file" }, 400);
+  const buf = new Uint8Array(await (raw as unknown as Blob).arrayBuffer());
+  if (buf.byteLength > MAX_IMAGE_BYTES) return c.json({ error: "image too large (max 5MB)" }, 413);
+  const kind = detectImage(buf);
+  if (!kind) return c.json({ error: "unsupported image type" }, 415);
+  const key = `members/${id}/avatar.${kind.ext}`;
+  await c.env.MEDIA!.put(key, buf, { httpMetadata: { contentType: kind.type } });
+  // Optional thumbnail for fast list/header loads.
+  const rawThumb = form.get("thumb");
+  if (rawThumb !== null && typeof rawThumb !== "string") {
+    const tbuf = new Uint8Array(await (rawThumb as unknown as Blob).arrayBuffer());
+    const tkind = detectImage(tbuf);
+    if (tkind && tbuf.byteLength <= MAX_IMAGE_BYTES) await c.env.MEDIA!.put(thumbKeyOf(key), tbuf, { httpMetadata: { contentType: tkind.type } });
+  }
+  await c.env.DB.prepare("UPDATE members SET profile_picture_key = ?, updated_at = ? WHERE id = ?").bind(key, new Date().toISOString(), id).run();
+  return c.json({ ok: true, key });
 });
 
 // Update / edit a member (super_admin / church_admin / scoped leader)
