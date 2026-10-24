@@ -8,8 +8,8 @@ import { BulkMessageBar } from "./BulkMessage";
 interface Point { id: string; name: string; departure_time: string | null; location: string | null; rider_count: number; }
 interface Rider { id: string; member_code: string | null; full_name: string; phone_number: string; whatsapp_number: string | null; level: string | null; residence_detail: string | null; cell_name: string; }
 
-export function PickupPoints() {
-  const { data, isLoading } = useQuery({ queryKey: ["pickup-points"], queryFn: () => api.get<{ results: Point[] }>("/api/pickup-points") });
+export function PickupPoints({ base = "/api/pickup-points" }: { base?: string }) {
+  const { data, isLoading } = useQuery({ queryKey: ["pickup-points", base], queryFn: () => api.get<{ results: Point[] }>(base) });
   const points = data?.results ?? [];
   const [open, setOpen] = useState<string | null>(null);
 
@@ -38,7 +38,7 @@ export function PickupPoints() {
                 <Badge tone="gold">{p.rider_count} {p.rider_count === 1 ? "rider" : "riders"}</Badge>
                 {open === p.id ? <ChevronDown size={18} className="text-ink-soft/40" /> : <ChevronRight size={18} className="text-ink-soft/40" />}
               </button>
-              {open === p.id && <Riders pointId={p.id} label={p.name} />}
+              {open === p.id && <Riders pointId={p.id} label={p.name} base={base} />}
             </li>
           ))}
         </ul>
@@ -47,8 +47,8 @@ export function PickupPoints() {
   );
 }
 
-function Riders({ pointId, label }: { pointId: string; label: string }) {
-  const { data, isLoading } = useQuery({ queryKey: ["pickup-riders", pointId], queryFn: () => api.get<{ results: Rider[] }>(`/api/pickup-points/${pointId}/members`) });
+function Riders({ pointId, label, base }: { pointId: string; label: string; base: string }) {
+  const { data, isLoading } = useQuery({ queryKey: ["pickup-riders", base, pointId], queryFn: () => api.get<{ results: Rider[] }>(`${base}/${pointId}/members`) });
   const riders = data?.results ?? [];
   if (isLoading) return <div className="grid h-16 place-items-center border-t border-ink/[0.06] text-ink-soft/50"><Spinner /></div>;
   if (riders.length === 0) return <div className="border-t border-ink/[0.06] p-4 text-sm text-ink-soft/55">No riders registered from this zone yet.</div>;

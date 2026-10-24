@@ -72,6 +72,17 @@ describe("Department Head portal", () => {
     expect(no.status).toBe(404);
   });
 
+  it("only a pickup-managing head (Transport) sees the pick-up points", async () => {
+    env.CAMPUS = "knust"; // pickupPoints feature on
+    await env.DB.prepare("INSERT INTO pickup_points (id, name, departure_time) VALUES ('pp1','Campus Zone','06:30')").run();
+    // head's department does NOT manage pickup yet → 404
+    expect((await get("/api/head/pickup-points", head)).status).toBe(404);
+    // flag their department as the pickup manager → now visible
+    await env.DB.prepare("UPDATE departments SET manages_pickup=1 WHERE id='dept_media'").run();
+    const r = await (await get("/api/head/pickup-points", head)).json() as { results: { id: string }[] };
+    expect(r.results.map((x) => x.id)).toEqual(["pp1"]);
+  });
+
   it("a gender-scoped wing head sees all members of that gender", async () => {
     // make Media a 'male' wing for this test; the head is scoped to it
     await env.DB.prepare("UPDATE departments SET gender_scope='male' WHERE id='dept_media'").run();

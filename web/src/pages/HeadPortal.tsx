@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutDashboard, FileText, Users, LogOut, Menu, X, CalendarCheck, Clock, Check, Wallet, LifeBuoy } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut, Menu, X, CalendarCheck, Clock, Check, Wallet, LifeBuoy, Bus } from "lucide-react";
 import { useAuth, roleLabel } from "../auth";
 import { Wordmark } from "../brand";
 import { api } from "../api";
@@ -10,29 +10,38 @@ import { BulkMessageBar } from "./BulkMessage";
 import { SubmitView } from "./SemesterReports";
 import { Attendance } from "./Attendance";
 import { Finance } from "./Finance";
+import { PickupPoints } from "./PickupPoints";
 import { FinanceGate } from "../financeGate";
 import { TicketCard, HELP_STATUS, type Ticket } from "./HelpDesk";
 
 type NavItem = { to: string; label: string; icon: typeof Users; end?: boolean };
-function navFor(role: string): NavItem[] {
+function navFor(role: string, canPickup: boolean): NavItem[] {
   const base: NavItem[] = [
     { to: "/head", label: "Overview", icon: LayoutDashboard, end: true },
     { to: "/head/report", label: "Submit report", icon: FileText },
     { to: "/head/members", label: "My members", icon: Users },
     { to: "/head/help-desk", label: "Help Desk", icon: LifeBuoy },
   ];
+  if (canPickup) base.push({ to: "/head/pickup-points", label: "Pick-up points", icon: Bus });
   if (role === "department_head_attendance") base.push({ to: "/head/attendance", label: "Attendance", icon: CalendarCheck });
   if (role === "finance_head") base.push({ to: "/head/finance", label: "Finance", icon: Wallet });
   return base;
 }
 
+// The head's capabilities derived from their department(s).
+function useHeadCaps() {
+  const { data } = useQuery({ queryKey: ["head-overview"], queryFn: () => api.get<{ departments: { manages_pickup?: number }[] }>("/api/head/overview"), staleTime: 60000 });
+  return { canPickup: (data?.departments ?? []).some((d) => d.manages_pickup) };
+}
+
 function Panel({ onNavigate, onSignOut }: { onNavigate?: () => void; onSignOut: () => void }) {
   const { me } = useAuth();
+  const { canPickup } = useHeadCaps();
   return (
     <>
       <div className="px-6 py-7"><Wordmark subtle /></div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3">
-        {navFor(me?.role ?? "").map(({ to, label, icon: Icon, end }) => (
+        {navFor(me?.role ?? "", canPickup).map(({ to, label, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} onClick={onNavigate}
             className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-all ${isActive ? "bg-gold/15 text-gold-soft shadow-[inset_0_0_0_1px_rgba(195,154,74,.3)]" : "text-ivory-soft/65 hover:bg-white/[0.05] hover:text-ivory-soft"}`}>
             <Icon size={18} strokeWidth={1.75} /><span className="font-medium">{label}</span>
@@ -84,6 +93,7 @@ export function HeadPortal() {
             <Route path="report" element={<ReportPage />} />
             <Route path="members" element={<MyMembers />} />
             <Route path="help-desk" element={<HeadHelpDesk />} />
+            <Route path="pickup-points" element={<PickupPoints base="/api/head/pickup-points" />} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="finance" element={<FinanceGate><Finance /></FinanceGate>} />
             <Route path="*" element={<Navigate to="/head" replace />} />

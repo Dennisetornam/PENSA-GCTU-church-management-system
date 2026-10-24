@@ -22,7 +22,7 @@ export async function getHeadDepartments(db: D1Database, deptIds: string[]) {
   if (deptIds.length === 0) return [];
   const { results } = await db
     .prepare(
-      `SELECT d.id, d.name, d.gender_scope,
+      `SELECT d.id, d.name, d.gender_scope, d.manages_pickup,
               CASE WHEN d.gender_scope IS NOT NULL
                 THEN (SELECT COUNT(*) FROM members m WHERE m.gender = d.gender_scope AND m.deleted_at IS NULL AND m.registration_status = 'approved')
                 ELSE (SELECT COUNT(*) FROM member_departments md JOIN members m ON m.id = md.member_id

@@ -128,6 +128,7 @@ CREATE TABLE departments (
     head_whatsapp    TEXT,
     registerable     INTEGER NOT NULL DEFAULT 1 CHECK (registerable IN (0,1)), -- shown on the registration form?
     gender_scope     TEXT CHECK (gender_scope IN ('male','female')),           -- wings: head's roster = all of this gender
+    manages_pickup   INTEGER NOT NULL DEFAULT 0 CHECK (manages_pickup IN (0,1)), -- head sees bus pick-up points (Transport)
     description      TEXT,
     is_active        INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
     created_at       TEXT NOT NULL DEFAULT (datetime('now')),
